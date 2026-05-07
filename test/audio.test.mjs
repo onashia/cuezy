@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { delimiter, join } from 'path';
-import { extractSegment, hasCommand } from '../lib/audio.mjs';
+import { extractSegment, getDuration, hasCommand } from '../lib/audio.mjs';
 
 test('hasCommand accepts executable relative paths', () => {
   const cwd = process.cwd();
@@ -40,6 +40,23 @@ test('extractSegment rejects when ffmpeg is aborted', async () => {
     await assert.rejects(pending, error => error.name === 'AbortError');
   } finally {
     process.env.PATH = previousPath;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('getDuration rejects when ffprobe output has no duration', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mix-id-audio-'));
+
+  try {
+    const ffprobe = join(dir, 'ffprobe');
+    writeFileSync(ffprobe, '#!/bin/sh\nprintf \'{"format":{}}\'\n');
+    chmodSync(ffprobe, 0o755);
+
+    await assert.rejects(
+      getDuration('/tmp/input.mp3', { ffprobeCommand: ffprobe }),
+      /Could not determine audio duration/
+    );
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });

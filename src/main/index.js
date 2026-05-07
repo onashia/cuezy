@@ -272,6 +272,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+app.on('will-quit', () => {
+  activeJob?.controller.abort('Application is quitting');
+  activeJob = null;
+});
+
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(() => ({ action: 'deny' }));
 });

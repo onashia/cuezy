@@ -91,7 +91,6 @@ export default function App() {
         setLogs(current => [...current, `Warning: ${warning.message}`]);
       }),
       window.cuezy.onAnalysisDone(({ result }) => {
-        setRows(result.tracks.map(trackToRow));
         setIsRunning(false);
         setJobId(null);
         setStatus(`Done: ${result.tracks.length} track${result.tracks.length === 1 ? '' : 's'}`);
