@@ -144,6 +144,7 @@ export default function App() {
     setRows([]);
     setLogs([]);
     setStatus('Starting');
+    setIsRunning(true);
 
     try {
       const result = await window.cuezy.startAnalysis({
@@ -153,8 +154,9 @@ export default function App() {
         start: settings.start,
       });
       setJobId(result.jobId);
-      setIsRunning(true);
     } catch (error) {
+      setIsRunning(false);
+      setJobId(null);
       setStatus('Error');
       setLogs(current => [...current, `Error: ${error.message}`]);
     }
