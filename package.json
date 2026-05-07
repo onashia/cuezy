@@ -1,7 +1,7 @@
 {
   "name": "mix-id",
   "version": "1.0.6",
-  "description": "Identify tracks in any DJ mix — from a file or URL. Outputs tracklists as TXT, CUE, and JSON.",
+  "description": "Cuezy desktop app for identifying timestamped songs in DJ mixes and VOD files.",
   "type": "module",
   "main": "./out/main/index.js",
   "bin": {
@@ -36,7 +36,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/skip5this/mix-id"
+    "url": "https://github.com/skip5this/cuezy"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
