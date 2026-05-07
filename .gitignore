@@ -1,7 +1,9 @@
 node_modules/
+.DS_Store
 *.mp3
 *.wav
 *.m4a
+*.mka
 *.webm
 *.ogg
 *_tracklist.txt

@@ -6,6 +6,9 @@
   "bin": {
     "mix-id": "./cli.mjs"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "cli.mjs",
     "lib/"

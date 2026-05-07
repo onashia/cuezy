@@ -104,6 +104,27 @@ mix-id generates three files:
 - **`.cue`** — CUE sheet with track markers and timestamps
 - **`_tracklist.json`** — Structured data with full metadata
 
+## Programmatic API
+
+The main analysis flow can also be imported from ESM code:
+
+```js
+import { analyzeAudio } from 'mix-id/lib/analyze-audio.mjs';
+
+const controller = new AbortController();
+const result = await analyzeAudio('my-mix.mp3', {
+  step: 30,
+  segment: 18,
+  signal: controller.signal,
+}, {
+  onSegmentResult(segment) {
+    // Stream progress into your app UI.
+  },
+});
+```
+
+Cancellation is best-effort: mix-id checks `AbortSignal` before and after audio tool calls, between scan segments, and during retry waits. A recognition request already in flight may continue until the Shazam library returns.
+
 ## How it works
 
 1. Downloads audio from URL (if given) using yt-dlp
