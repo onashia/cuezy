@@ -32,11 +32,11 @@
     "audio",
     "fingerprint"
   ],
-  "author": "Scott Bell",
+  "author": "onashia",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/skip5this/cuezy"
+    "url": "https://github.com/onashia/cuezy"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
