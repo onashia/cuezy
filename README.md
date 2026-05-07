@@ -125,6 +125,32 @@ const result = await analyzeAudio('my-mix.mp3', {
 
 Cancellation is best-effort: mix-id checks `AbortSignal` before and after audio tool calls, between scan segments, and during retry waits. A recognition request already in flight may continue until the Shazam library returns.
 
+## Cuezy Desktop MVP
+
+This repo also includes a macOS-first Electron desktop MVP named **Cuezy**. It uses electron-vite with a secure preload bridge and calls the same reusable analysis core as the CLI.
+
+```bash
+npm run dev       # Electron development app
+npm run build     # electron-vite build
+npm run dist:mac  # unsigned local dmg + zip build
+```
+
+The desktop MVP supports local audio/VOD files only. URL downloads and yt-dlp remain CLI-only for now. ffmpeg and ffprobe must be available on PATH; bundling ffmpeg is a later packaging task.
+
+Privacy note: audio is processed locally, but short snippets are sent to Shazam's public recognition endpoint for identification.
+
+Public macOS distribution will require Developer ID signing and notarization. The MVP packaging config is intended for unsigned/ad-hoc local development builds.
+
+Desktop packaging TODOs:
+
+- Add app icon and DMG background/layout polish.
+- Decide Apple Silicon arm64, Intel x64, and later universal build strategy.
+- Add Developer ID signing, notarization, hardened runtime, and entitlements via environment variables.
+- Add auto-update and clearer portable/zip distribution strategy.
+- Bundle ffmpeg with `extraResources` / `asarUnpack`; do not pack executable binaries inside ASAR.
+- Add yt-dlp GUI support only after the local-file MVP is solid.
+- Add Electron fuses hardening and better installer metadata.
+
 ## How it works
 
 1. Downloads audio from URL (if given) using yt-dlp

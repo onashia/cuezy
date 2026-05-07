@@ -1,5 +1,7 @@
 node_modules/
 .DS_Store
+out/
+release/
 *.mp3
 *.wav
 *.m4a
