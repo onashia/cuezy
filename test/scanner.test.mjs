@@ -55,3 +55,54 @@ test('removes temporary scan directory after scanning', async () => {
 
   assert.equal(existsSync(scanDir), false);
 });
+
+test('aborts after repeated segment extraction failures', async () => {
+  const warnings = [];
+  const segments = [];
+
+  await assert.rejects(
+    scan('/tmp/fake mix.mp3', {
+      duration: 40,
+      step: 10,
+      segment: 10,
+      quiet: true,
+      rateLimitMs: 0,
+      maxConsecutiveExtractionFailures: 2,
+      extractSegment: async () => false,
+      recognize: async () => null,
+      callbacks: {
+        onWarning(warning) {
+          warnings.push(warning);
+        },
+        onSegmentResult(segment) {
+          segments.push(segment);
+        },
+      },
+    }),
+    /Segment extraction failed 2 times in a row/
+  );
+
+  assert.equal(warnings.length, 2);
+  assert.deepEqual(segments.map(segment => segment.status), ['skipped', 'skipped']);
+});
+
+test('resets extraction failure threshold after a successful segment', async () => {
+  const outcomes = [false, true, false, true];
+
+  const result = await scan('/tmp/fake mix.mp3', {
+    duration: 40,
+    step: 10,
+    segment: 10,
+    quiet: true,
+    rateLimitMs: 0,
+    maxConsecutiveExtractionFailures: 2,
+    extractSegment: async (_file, _start, _duration, outPath) => {
+      const ok = outcomes.shift();
+      if (ok) writeFileSync(outPath, Buffer.alloc(8));
+      return ok;
+    },
+    recognize: async () => null,
+  });
+
+  assert.equal(result.segmentsScanned, 4);
+});
