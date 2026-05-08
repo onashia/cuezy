@@ -1,10 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const emptySettings = {
   step: 60,
   segment: 18,
   start: 0,
 };
+
+const THEME_OPTIONS = [
+  { value: 'cupcake', label: 'Cupcake' },
+  { value: 'pastel', label: 'Pastel' },
+  { value: 'garden', label: 'Garden' },
+  { value: 'lemonade', label: 'Lemonade' },
+  { value: 'winter', label: 'Winter' },
+  { value: 'caramellatte', label: 'Caramellatte' },
+  { value: 'coffee', label: 'Coffee' },
+];
+
+const THEME_STORAGE_KEY = 'cuezy-theme';
+const NOTICE_ALERT_CLASSES = {
+  info: 'alert-info',
+  success: 'alert-success',
+  warning: 'alert-warning',
+  error: 'alert-error',
+};
+const dragRegionStyle = { WebkitAppRegion: 'drag' };
+const noDragRegionStyle = { WebkitAppRegion: 'no-drag' };
 
 function trackToRow(track, index) {
   return {
@@ -21,20 +41,74 @@ function fileName(filePath) {
   return filePath.split(/[\\/]/).pop() || filePath;
 }
 
+function savedTheme() {
+  const fallback = THEME_OPTIONS[0].value;
+  try {
+    const theme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return THEME_OPTIONS.some(option => option.value === theme) ? theme : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function Field({ label, children }) {
   return (
-    <label className="field">
-      <span>{label}</span>
+    <label className="flex flex-col gap-1.5" style={noDragRegionStyle}>
+      <span className="text-xs font-bold text-base-content/70">{label}</span>
       {children}
     </label>
   );
 }
 
-function UploadMark() {
+function ThemePicker({ className = '', theme, onThemeChange }) {
+  const dropdownRef = useRef(null);
+
+  function chooseTheme(value) {
+    onThemeChange(value);
+    dropdownRef.current?.removeAttribute('open');
+  }
+
   return (
-    <svg className="upload-mark" viewBox="0 0 96 96" aria-hidden="true">
-      <path d="M18 30.5C18 23.6 23.6 18 30.5 18h18.2c3.5 0 6.8 1.5 9.2 4.1l4.8 5.4h2.8C72.4 27.5 78 33.1 78 40v25.5C78 72.4 72.4 78 65.5 78h-35C23.6 78 18 72.4 18 65.5v-35Z" />
-      <path d="M30 41h36M48 35v25M38 51l10-10 10 10" />
+    <details ref={dropdownRef} className={`dropdown dropdown-end window-no-drag ${className}`} style={noDragRegionStyle}>
+      <summary className="btn btn-square btn-ghost btn-sm" aria-label="Choose theme" title="Choose theme">
+        <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
+          <path className="fill-none stroke-current [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:2]" d="M12 3a9 9 0 0 0 0 18h1.5a1.5 1.5 0 0 0 0-3H13a1.5 1.5 0 0 1 0-3h2a6 6 0 0 0 0-12h-3Z" />
+          <path className="fill-current" d="M7.7 10.7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3-3.2a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 3.2a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+        </svg>
+      </summary>
+      <ul className="menu dropdown-content z-10 mt-2 w-48 rounded-box border border-base-300 bg-base-100 p-2 shadow-xl">
+        {THEME_OPTIONS.map(option => (
+          <li key={option.value}>
+            <button
+              type="button"
+              className={`flex items-center justify-between gap-3 ${option.value === theme ? 'active' : ''}`}
+              onClick={() => chooseTheme(option.value)}
+            >
+              <span>{option.label}</span>
+              {option.value === theme && (
+                <svg className="size-4 shrink-0" viewBox="0 0 20 20" aria-hidden="true">
+                  <path className="fill-current" d="M7.7 13.3 4.4 10l-1.2 1.2 4.5 4.5 9-9L15.5 5.5l-7.8 7.8Z" />
+                </svg>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function WindowDragStrip() {
+  return (
+    <div className="window-drag fixed inset-x-0 top-0 z-20 h-4" style={dragRegionStyle} aria-hidden="true" />
+  );
+}
+
+function UploadMark({ className = 'h-20 w-20' }) {
+  return (
+    <svg className={`${className} text-primary`} viewBox="0 0 96 96" aria-hidden="true">
+      <path className="fill-current opacity-95" d="M18 30.5C18 23.6 23.6 18 30.5 18h18.2c3.5 0 6.8 1.5 9.2 4.1l4.8 5.4h2.8C72.4 27.5 78 33.1 78 40v25.5C78 72.4 72.4 78 65.5 78h-35C23.6 78 18 72.4 18 65.5v-35Z" />
+      <path className="fill-none stroke-primary-content [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:5.6]" d="M30 41h36M48 35v25M38 51l10-10 10 10" />
     </svg>
   );
 }
@@ -51,6 +125,16 @@ export default function App() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [scanProgress, setScanProgress] = useState({ percent: 0, detail: '' });
   const [status, setStatus] = useState('Ready');
+  const [theme, setTheme] = useState(savedTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Theme persistence is nice-to-have; the selected theme still applies.
+    }
+  }, [theme]);
 
   useEffect(() => {
     window.cuezy.getAppInfo().then(setAppInfo).catch(error => {
@@ -221,14 +305,16 @@ export default function App() {
   const progressValue = !isRunning && (rows.length > 0 || status.startsWith('Done'))
     ? 100
     : Math.max(0, Math.min(100, Number(scanProgress.percent) || 0));
-  const analysisTitle = isRunning
-    ? `Analyzing ${fileName(filePath)}`
+  const statusTitle = isRunning
+    ? 'Analyzing'
     : rows.length > 0
       ? `${rows.length} track${rows.length === 1 ? '' : 's'} found`
-      : 'Ready to analyze';
-  const analysisDetail = scanProgress.detail || (rows.length > 0
-    ? 'Review and export your editable tracklist.'
-    : 'Cuezy will use the default scan settings.');
+      : status;
+  const statusDetail = scanProgress.detail || (isRunning
+    ? fileName(filePath)
+    : rows.length > 0
+      ? 'Review and export your editable tracklist.'
+      : '');
 
   const dropHandlers = {
     onDragOver: event => {
@@ -241,28 +327,32 @@ export default function App() {
 
   if (showSplash) {
     return (
-      <main className={`splash-shell${dragActive ? ' is-dragging' : ''}`} {...dropHandlers}>
-        <section className="splash-card">
-          <div className="brand-lockup">
-            <div className="brand-mark">C</div>
-            <h1>Cuezy</h1>
+      <main className="relative grid min-h-screen place-items-center bg-base-200 p-10" {...dropHandlers}>
+        <WindowDragStrip />
+        <section className="relative w-[min(640px,calc(100vw-84px))] rounded-box bg-base-100 p-10 pt-16 shadow-2xl">
+          <div className="window-drag absolute inset-x-0 top-0 h-11" style={dragRegionStyle} aria-hidden="true" />
+          <ThemePicker className="absolute right-5 top-5" theme={theme} onThemeChange={setTheme} />
+
+          <div className="window-drag mb-6 flex items-center justify-center gap-3" style={dragRegionStyle}>
+            <div className="grid size-11 place-items-center rounded-field bg-primary text-xl font-black text-primary-content">C</div>
+            <h1 className="m-0 text-4xl font-black leading-none tracking-normal text-base-content">Cuezy</h1>
           </div>
 
-          <div className="splash-drop-zone">
-            <UploadMark />
-            <strong>Drop an audio or video file</strong>
-            <span>or choose one from disk</span>
-            <button type="button" className="primary choose-button" onClick={pickFile}>
+          <div className={`flex min-h-96 flex-col items-center justify-center rounded-box border border-dashed border-primary/40 bg-base-100 p-10 text-center ${dragActive ? 'border-primary bg-primary/10' : ''}`}>
+            <UploadMark className="mb-5 size-20" />
+            <strong className="text-2xl font-bold leading-tight text-base-content">Drop an audio or video file</strong>
+            <span className="mt-2 text-sm text-base-content/60">or choose one from disk</span>
+            <button type="button" className="btn btn-primary btn-lg mt-6 min-w-40" onClick={pickFile}>
               Choose File
             </button>
           </div>
 
           {ffmpegMissing ? (
-            <p className="splash-warning">ffmpeg and ffprobe are required before analysis can run.</p>
+            <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-warning">ffmpeg and ffprobe are required before analysis can run.</p>
           ) : notice ? (
-            <p className={`splash-warning ${notice.tone}`}>{notice.message}</p>
+            <p className={`mx-auto mt-5 max-w-md text-center text-xs leading-relaxed ${notice.tone === 'error' ? 'text-error' : 'text-warning'}`}>{notice.message}</p>
           ) : (
-            <p className="splash-note">Cuezy analyzes local files and sends short snippets to Shazam for recognition.</p>
+            <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-base-content/60">Cuezy analyzes local files and sends short snippets to Shazam for recognition.</p>
           )}
         </section>
       </main>
@@ -270,175 +360,188 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <h1>Cuezy</h1>
-          <p>Find timestamped songs in local audio and VOD files.</p>
-        </div>
-      </header>
-
-      <section className="analysis-panel">
-        <div className={`compact-drop-zone${dragActive ? ' is-active' : ''}`} {...dropHandlers}>
-          <UploadMark />
+    <main className="relative h-screen min-w-[760px] bg-base-200">
+      <WindowDragStrip />
+      <div className="mx-auto grid h-full w-[min(1240px,calc(100vw-40px))] grid-rows-[auto_minmax(0,1fr)] gap-4 py-6">
+        <header className="window-drag flex min-h-14 items-center justify-between" style={dragRegionStyle}>
           <div>
-            <strong>{fileName(filePath)}</strong>
-            <span>{filePath}</span>
+            <h1 className="m-0 text-3xl font-black leading-tight tracking-normal text-base-content">Cuezy</h1>
+            <p className="mt-1 text-sm text-base-content/60">Find timestamped songs in local audio and VOD files.</p>
           </div>
-          <button type="button" onClick={pickFile} disabled={isRunning}>
-            Change
-          </button>
-        </div>
+          <ThemePicker theme={theme} onThemeChange={setTheme} />
+        </header>
 
-        {ffmpegMissing && (
-          <div className="warning">
-            ffmpeg and ffprobe are required. Install ffmpeg before analyzing.
+        <section className="grid min-h-0 grid-cols-[320px_minmax(0,1fr)] gap-4">
+        <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto rounded-box border border-base-300 bg-base-100/95 p-4 shadow-xl">
+          <div className="grid gap-2" {...dropHandlers}>
+            <div className={`grid min-h-20 grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-box border border-dashed border-primary/30 bg-base-100 p-3 ${dragActive ? 'border-primary bg-primary/10' : ''}`}>
+              <UploadMark className="size-12" />
+              <div className="min-w-0 self-center">
+                <strong className="block truncate text-base font-bold text-base-content">{fileName(filePath)}</strong>
+                <span className="mt-1 block truncate text-xs leading-snug text-base-content/60">{filePath}</span>
+              </div>
+            </div>
+            <button type="button" className="btn btn-sm w-full" onClick={pickFile} disabled={isRunning}>
+              Change File
+            </button>
           </div>
-        )}
 
-        <div className="analysis-status">
-          <div>
-            <h2>{analysisTitle}</h2>
-            <p>{analysisDetail}</p>
+          {ffmpegMissing && (
+            <div className="alert alert-warning alert-soft">
+              ffmpeg and ffprobe are required. Install ffmpeg before analyzing.
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            {isRunning ? (
+              <button type="button" className="btn btn-error btn-outline w-full" onClick={cancelAnalysis} disabled={!jobId}>
+                Cancel
+              </button>
+            ) : (
+              <button type="button" className="btn btn-primary w-full" onClick={startAnalysis} disabled={!canAnalyze || ffmpegMissing}>
+                {rows.length > 0 ? 'Analyze Again' : 'Analyze'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost w-full"
+              onClick={() => setShowAdvanced(current => !current)}
+              aria-expanded={showAdvanced}
+              disabled={isRunning}
+            >
+              {showAdvanced && !isRunning ? 'Hide Advanced' : 'Advanced'}
+            </button>
           </div>
 
-          {showMeter && (
-            <div className="analysis-meter" aria-label={`Analysis progress ${progressValue}%`}>
-              <div style={{ width: `${progressValue}%` }} />
+          <div className="grid gap-2 rounded-box bg-base-200/60 px-4 py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs font-bold uppercase text-base-content/60">Status</span>
+              <strong className="truncate text-sm font-bold text-base-content">{statusTitle}</strong>
+            </div>
+            {statusDetail && (
+              <p className="truncate text-sm leading-relaxed text-base-content/70">{statusDetail}</p>
+            )}
+            {showMeter && (
+              <progress className="progress progress-primary h-2" value={progressValue} max="100" aria-label={`Analysis progress ${progressValue}%`} />
+            )}
+          </div>
+
+          {showAdvanced && !isRunning && (
+            <div className="grid gap-3 border-t border-base-300 pt-4">
+              <Field label="Scan step">
+                <input
+                  className="input input-sm w-full"
+                  type="number"
+                  min="1"
+                  value={settings.step}
+                  onChange={event => setNumericSetting('step', event.target.value)}
+                />
+              </Field>
+              <Field label="Segment length">
+                <input
+                  className="input input-sm w-full"
+                  type="number"
+                  min="1"
+                  value={settings.segment}
+                  onChange={event => setNumericSetting('segment', event.target.value)}
+                />
+              </Field>
+              <Field label="Start time">
+                <input
+                  className="input input-sm w-full"
+                  type="number"
+                  min="0"
+                  value={settings.start}
+                  onChange={event => setNumericSetting('start', event.target.value)}
+                />
+              </Field>
             </div>
           )}
 
           {notice && (
-            <p className={`status-notice ${notice.tone}`} aria-live="polite">
+            <p className={`alert alert-soft ${NOTICE_ALERT_CLASSES[notice.tone] ?? 'alert-info'}`} aria-live="polite">
               {notice.message}
             </p>
           )}
-        </div>
+        </aside>
 
-        <div className="analysis-actions">
-          {isRunning ? (
-            <button type="button" className="cancel-button" onClick={cancelAnalysis} disabled={!jobId}>
-              Cancel
-            </button>
-          ) : (
-            <button type="button" className="primary" onClick={startAnalysis} disabled={!canAnalyze || ffmpegMissing}>
-              {rows.length > 0 ? 'Analyze Again' : 'Analyze'}
-            </button>
-          )}
-          <button
-            type="button"
-            className="secondary-toggle"
-            onClick={() => setShowAdvanced(current => !current)}
-            aria-expanded={showAdvanced}
-            disabled={isRunning}
-          >
-            {showAdvanced ? 'Hide Advanced' : 'Advanced'}
-          </button>
-        </div>
-
-        {showAdvanced && !isRunning && (
-          <div className="settings-grid">
-            <Field label="Scan step">
-              <input
-                type="number"
-                min="1"
-                value={settings.step}
-                onChange={event => setNumericSetting('step', event.target.value)}
-              />
-            </Field>
-            <Field label="Segment length">
-              <input
-                type="number"
-                min="1"
-                value={settings.segment}
-                onChange={event => setNumericSetting('segment', event.target.value)}
-              />
-            </Field>
-            <Field label="Start time">
-              <input
-                type="number"
-                min="0"
-                value={settings.start}
-                onChange={event => setNumericSetting('start', event.target.value)}
-              />
-            </Field>
-          </div>
-        )}
-      </section>
-
-      {showResults && (
-        <section className="workspace">
-          <section className="results-panel">
-            <div className="panel-header">
-              <div>
-                <h2>Tracklist</h2>
-                <p>{rows.length} editable result{rows.length === 1 ? '' : 's'}</p>
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/95 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 p-4">
+            <div className="min-w-56 flex-1">
+              <h2 className="m-0 text-lg font-bold leading-tight text-base-content">Tracklist</h2>
+              <p className="mt-1 text-sm text-base-content/60">
+                {showResults
+                  ? `${rows.length} editable result${rows.length === 1 ? '' : 's'}`
+                  : 'Results will appear here as Cuezy recognizes songs.'}
+              </p>
+            </div>
+            {rows.length > 0 && (
+              <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-4">
+                <button type="button" className="btn btn-sm" onClick={copyMarkdown}>
+                  Copy Markdown
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => save('markdown')}>
+                  Save Markdown
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => save('json')}>
+                  JSON
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => save('txt')}>
+                  TXT
+                </button>
               </div>
-              {rows.length > 0 && (
-                <div className="export-actions">
-                  <button type="button" onClick={copyMarkdown}>
-                    Copy Markdown
-                  </button>
-                  <button type="button" onClick={() => save('markdown')}>
-                    Save Markdown
-                  </button>
-                  <button type="button" onClick={() => save('json')}>
-                    JSON
-                  </button>
-                  <button type="button" onClick={() => save('txt')}>
-                    TXT
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
+          </div>
 
-            <div className="table-wrap">
-              <table>
-                <thead>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="table table-pin-rows table-sm w-full table-fixed">
+              <thead>
+                <tr>
+                  <th className="w-28">Timestamp</th>
+                  <th>Artist</th>
+                  <th>Song</th>
+                  <th>Album</th>
+                  <th className="w-20">Year</th>
+                  <th className="w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
                   <tr>
-                    <th>Timestamp</th>
-                    <th>Artist</th>
-                    <th>Song</th>
-                    <th>Album</th>
-                    <th>Year</th>
-                    <th>Actions</th>
+                    <td colSpan="6" className="h-64 text-center text-base-content/60">
+                      {status.startsWith('Done') ? 'No tracks were found in this pass.' : 'Start analysis to build an editable tracklist.'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="empty-cell">No tracks were found in this pass.</td>
-                    </tr>
-                  ) : rows.map(row => (
-                    <tr key={row.id}>
-                      <td>
-                        <input value={row.timestamp} onChange={event => updateRow(row.id, 'timestamp', event.target.value)} />
-                      </td>
-                      <td>
-                        <input value={row.artist} onChange={event => updateRow(row.id, 'artist', event.target.value)} />
-                      </td>
-                      <td>
-                        <input value={row.title} onChange={event => updateRow(row.id, 'title', event.target.value)} />
-                      </td>
-                      <td>
-                        <input value={row.album} onChange={event => updateRow(row.id, 'album', event.target.value)} />
-                      </td>
-                      <td>
-                        <input value={row.year} onChange={event => updateRow(row.id, 'year', event.target.value)} />
-                      </td>
-                      <td>
-                        <button type="button" className="link-button" onClick={() => deleteRow(row.id)}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                ) : rows.map(row => (
+                  <tr key={row.id}>
+                    <td>
+                      <input className="input input-sm w-full min-w-0" value={row.timestamp} onChange={event => updateRow(row.id, 'timestamp', event.target.value)} />
+                    </td>
+                    <td>
+                      <input className="input input-sm w-full min-w-0" value={row.artist} onChange={event => updateRow(row.id, 'artist', event.target.value)} />
+                    </td>
+                    <td>
+                      <input className="input input-sm w-full min-w-0" value={row.title} onChange={event => updateRow(row.id, 'title', event.target.value)} />
+                    </td>
+                    <td>
+                      <input className="input input-sm w-full min-w-0" value={row.album} onChange={event => updateRow(row.id, 'album', event.target.value)} />
+                    </td>
+                    <td>
+                      <input className="input input-sm w-full min-w-0" value={row.year} onChange={event => updateRow(row.id, 'year', event.target.value)} />
+                    </td>
+                    <td>
+                      <button type="button" className="btn btn-error btn-ghost btn-sm w-full" onClick={() => deleteRow(row.id)}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
-      )}
+        </section>
+      </div>
     </main>
   );
 }

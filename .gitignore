@@ -1,5 +1,8 @@
 node_modules/
 .DS_Store
+.vite/
+.cache/
+.turbo/
 
 # Environment and local config
 .env
@@ -7,16 +10,21 @@ node_modules/
 !.env.example
 .npmrc
 
-# Logs and test/build artifacts
+# Logs and package-manager noise
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-store/
+.yarn/
+
+# Test/build artifacts
 coverage/
 dist/
 out/
 release/
+*.tsbuildinfo
 
 # Local media inputs
 *.aac
