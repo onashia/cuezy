@@ -25,6 +25,13 @@ dist/
 out/
 release/
 *.tsbuildinfo
+*.blockmap
+*.dmg
+*.zip
+*.AppImage
+*.snap
+*.deb
+*.rpm
 
 # Local media inputs
 *.aac
@@ -50,3 +57,5 @@ release/
 *.p12
 *.p8
 AuthKey_*.p8
+*.mobileprovision
+*.provisionprofile

@@ -23,6 +23,38 @@ const NOTICE_ALERT_CLASSES = {
   warning: 'alert-warning',
   error: 'alert-error',
 };
+const STATUS_TONE_CLASSES = {
+  neutral: {
+    panel: 'bg-base-200/60 text-base-content',
+    label: 'text-base-content/60',
+    detail: 'text-base-content/70',
+    progress: 'progress-primary',
+  },
+  info: {
+    panel: 'bg-info/15 text-info',
+    label: 'text-info/70',
+    detail: 'text-info/80',
+    progress: 'progress-info',
+  },
+  success: {
+    panel: 'bg-success/15 text-success',
+    label: 'text-success/70',
+    detail: 'text-success/80',
+    progress: 'progress-success',
+  },
+  warning: {
+    panel: 'bg-warning/20 text-warning',
+    label: 'text-warning/70',
+    detail: 'text-warning/80',
+    progress: 'progress-warning',
+  },
+  error: {
+    panel: 'bg-error/15 text-error',
+    label: 'text-error/70',
+    detail: 'text-error/80',
+    progress: 'progress-error',
+  },
+};
 const dragRegionStyle = { WebkitAppRegion: 'drag' };
 const noDragRegionStyle = { WebkitAppRegion: 'no-drag' };
 
@@ -100,7 +132,11 @@ function ThemePicker({ className = '', theme, onThemeChange }) {
 
 function WindowDragStrip() {
   return (
-    <div className="window-drag fixed inset-x-0 top-0 z-20 h-4" style={dragRegionStyle} aria-hidden="true" />
+    <div className="window-drag fixed inset-x-0 top-0 z-20 h-12" style={dragRegionStyle}>
+      <div className="pointer-events-none flex h-full items-center justify-center">
+        <span className="select-none text-sm font-semibold text-base-content/70">Cuezy</span>
+      </div>
+    </div>
   );
 }
 
@@ -175,15 +211,11 @@ export default function App() {
         setIsRunning(false);
         setJobId(null);
         setScanProgress({ percent: 100, detail: `Scanned ${result.segmentsScanned} segment${result.segmentsScanned === 1 ? '' : 's'}` });
-        setStatus(`Done: ${result.tracks.length} track${result.tracks.length === 1 ? '' : 's'}`);
+        setStatus('Done');
         setNotice(current => {
           if (current?.tone === 'warning' || current?.tone === 'error') return current;
-          return {
-            tone: result.tracks.length > 0 ? 'success' : 'info',
-            message: result.tracks.length > 0
-              ? `Found ${result.tracks.length} track${result.tracks.length === 1 ? '' : 's'}.`
-              : 'No tracks were found in this pass.',
-          };
+          if (result.tracks.length > 0) return null;
+          return { tone: 'info', message: 'No tracks were found in this pass.' };
         });
       }),
       window.cuezy.onAnalysisError(({ error }) => {
@@ -223,6 +255,7 @@ export default function App() {
   async function handleDrop(event) {
     event.preventDefault();
     setDragActive(false);
+    if (isRunning) return;
 
     const file = event.dataTransfer.files?.[0];
     if (!file) return;
@@ -265,9 +298,17 @@ export default function App() {
 
   async function cancelAnalysis() {
     if (!jobId) return;
-    await window.cuezy.cancelAnalysis(jobId);
-    setStatus('Cancelling');
-    setNotice({ tone: 'info', message: 'Cancellation requested. Current request may finish first.' });
+    try {
+      const result = await window.cuezy.cancelAnalysis(jobId);
+      if (result.canceled) {
+        setStatus('Cancelling');
+        setNotice({ tone: 'info', message: 'Cancellation requested. Current request may finish first.' });
+      } else {
+        setNotice({ tone: 'warning', message: 'No active analysis job was found to cancel.' });
+      }
+    } catch (error) {
+      setNotice({ tone: 'error', message: error.message || 'Could not cancel analysis.' });
+    }
   }
 
   function updateRow(id, field, value) {
@@ -281,19 +322,25 @@ export default function App() {
   }
 
   async function copyMarkdown() {
-    const result = await window.cuezy.copyMarkdownTracklist(rows);
-    setStatus(result.copied ? 'Copied Markdown' : 'Copy failed');
-    setNotice({
-      tone: result.copied ? 'success' : 'error',
-      message: result.copied ? 'Markdown copied to clipboard.' : 'Could not copy Markdown.',
-    });
+    try {
+      const result = await window.cuezy.copyMarkdownTracklist(rows);
+      setNotice({
+        tone: result.copied ? 'success' : 'error',
+        message: result.copied ? 'Markdown copied to clipboard.' : 'Could not copy Markdown.',
+      });
+    } catch (error) {
+      setNotice({ tone: 'error', message: error.message || 'Could not copy Markdown.' });
+    }
   }
 
   async function save(format) {
-    const result = await window.cuezy.saveExport(format, rows);
-    if (!result.canceled) {
-      setStatus(`Saved ${format.toUpperCase()}`);
-      setNotice({ tone: 'success', message: `Saved ${result.filePath}` });
+    try {
+      const result = await window.cuezy.saveExport(format, rows);
+      if (!result.canceled) {
+        setNotice({ tone: 'success', message: `Saved ${result.filePath}` });
+      }
+    } catch (error) {
+      setNotice({ tone: 'error', message: error.message || `Could not save ${format.toUpperCase()}.` });
     }
   }
 
@@ -302,6 +349,9 @@ export default function App() {
   const showSplash = !filePath && !isRunning;
   const showResults = rows.length > 0 || (!isRunning && status.startsWith('Done'));
   const showMeter = isRunning || rows.length > 0 || status !== 'Ready';
+  const emptyTracklistMessage = status.startsWith('Done')
+    ? 'No editable tracks remain.'
+    : 'Start analysis to build an editable tracklist.';
   const progressValue = !isRunning && (rows.length > 0 || status.startsWith('Done'))
     ? 100
     : Math.max(0, Math.min(100, Number(scanProgress.percent) || 0));
@@ -309,12 +359,24 @@ export default function App() {
     ? 'Analyzing'
     : rows.length > 0
       ? `${rows.length} track${rows.length === 1 ? '' : 's'} found`
+      : status === 'Done'
+        ? 'No tracks found'
       : status;
   const statusDetail = scanProgress.detail || (isRunning
     ? fileName(filePath)
     : rows.length > 0
       ? 'Review and export your editable tracklist.'
       : '');
+  const statusTone = status === 'Error'
+    ? 'error'
+    : status === 'Cancelled' || status === 'Cancelling'
+      ? 'warning'
+      : status.startsWith('Done')
+        ? rows.length > 0 ? 'success' : 'info'
+        : isRunning || status === 'Starting'
+          ? 'info'
+          : 'neutral';
+  const statusToneClasses = STATUS_TONE_CLASSES[statusTone];
 
   const dropHandlers = {
     onDragOver: event => {
@@ -333,12 +395,7 @@ export default function App() {
           <div className="window-drag absolute inset-x-0 top-0 h-11" style={dragRegionStyle} aria-hidden="true" />
           <ThemePicker className="absolute right-5 top-5" theme={theme} onThemeChange={setTheme} />
 
-          <div className="window-drag mb-6 flex items-center justify-center gap-3" style={dragRegionStyle}>
-            <div className="grid size-11 place-items-center rounded-field bg-primary text-xl font-black text-primary-content">C</div>
-            <h1 className="m-0 text-4xl font-black leading-none tracking-normal text-base-content">Cuezy</h1>
-          </div>
-
-          <div className={`flex min-h-96 flex-col items-center justify-center rounded-box border border-dashed border-primary/40 bg-base-100 p-10 text-center ${dragActive ? 'border-primary bg-primary/10' : ''}`}>
+          <div className={`flex min-h-[27rem] flex-col items-center justify-center rounded-box border border-dashed border-primary/40 bg-base-100 p-10 text-center ${dragActive ? 'border-primary bg-primary/10' : ''}`}>
             <UploadMark className="mb-5 size-20" />
             <strong className="text-2xl font-bold leading-tight text-base-content">Drop an audio or video file</strong>
             <span className="mt-2 text-sm text-base-content/60">or choose one from disk</span>
@@ -348,11 +405,11 @@ export default function App() {
           </div>
 
           {ffmpegMissing ? (
-            <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-warning">ffmpeg and ffprobe are required before analysis can run.</p>
+            <p className="alert alert-warning alert-soft mx-auto mt-5 max-w-md text-sm leading-relaxed">ffmpeg and ffprobe are required before analysis can run.</p>
           ) : notice ? (
-            <p className={`mx-auto mt-5 max-w-md text-center text-xs leading-relaxed ${notice.tone === 'error' ? 'text-error' : 'text-warning'}`}>{notice.message}</p>
+            <p className={`alert alert-soft mx-auto mt-5 max-w-md text-sm leading-relaxed ${NOTICE_ALERT_CLASSES[notice.tone] ?? 'alert-info'}`}>{notice.message}</p>
           ) : (
-            <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-base-content/60">Cuezy analyzes local files and sends short snippets to Shazam for recognition.</p>
+            <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-base-content/60">Local files are analyzed with short snippets sent to Shazam for recognition.</p>
           )}
         </section>
       </main>
@@ -362,27 +419,24 @@ export default function App() {
   return (
     <main className="relative h-screen min-w-[760px] bg-base-200">
       <WindowDragStrip />
-      <div className="mx-auto grid h-full w-[min(1240px,calc(100vw-40px))] grid-rows-[auto_minmax(0,1fr)] gap-4 py-6">
-        <header className="window-drag flex min-h-14 items-center justify-between" style={dragRegionStyle}>
-          <div>
-            <h1 className="m-0 text-3xl font-black leading-tight tracking-normal text-base-content">Cuezy</h1>
-            <p className="mt-1 text-sm text-base-content/60">Find timestamped songs in local audio and VOD files.</p>
-          </div>
-          <ThemePicker theme={theme} onThemeChange={setTheme} />
-        </header>
-
-        <section className="grid min-h-0 grid-cols-[320px_minmax(0,1fr)] gap-4">
+      <div className="mx-auto h-full w-[min(1240px,calc(100vw-40px))] pb-4 pt-12">
+        <section className="grid h-full min-h-0 grid-cols-[320px_minmax(0,1fr)] gap-4">
         <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto rounded-box border border-base-300 bg-base-100/95 p-4 shadow-xl">
-          <div className="grid gap-2" {...dropHandlers}>
-            <div className={`grid min-h-20 grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-box border border-dashed border-primary/30 bg-base-100 p-3 ${dragActive ? 'border-primary bg-primary/10' : ''}`}>
+          <div {...dropHandlers}>
+            <button
+              type="button"
+              className={`grid min-h-24 w-full grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-box border border-dashed border-primary/30 bg-base-100 p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isRunning ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-primary/60 hover:bg-primary/5'} ${dragActive ? 'border-primary bg-primary/10' : ''}`}
+              onClick={pickFile}
+              disabled={isRunning}
+            >
               <UploadMark className="size-12" />
               <div className="min-w-0 self-center">
                 <strong className="block truncate text-base font-bold text-base-content">{fileName(filePath)}</strong>
                 <span className="mt-1 block truncate text-xs leading-snug text-base-content/60">{filePath}</span>
+                <span className="mt-2 block text-xs font-semibold leading-snug text-primary/80">
+                  {isRunning ? 'File locked during analysis' : 'Click or drop to change file'}
+                </span>
               </div>
-            </div>
-            <button type="button" className="btn btn-sm w-full" onClick={pickFile} disabled={isRunning}>
-              Change File
             </button>
           </div>
 
@@ -402,61 +456,65 @@ export default function App() {
                 {rows.length > 0 ? 'Analyze Again' : 'Analyze'}
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-ghost w-full"
-              onClick={() => setShowAdvanced(current => !current)}
-              aria-expanded={showAdvanced}
-              disabled={isRunning}
-            >
-              {showAdvanced && !isRunning ? 'Hide Advanced' : 'Advanced'}
-            </button>
           </div>
 
-          <div className="grid gap-2 rounded-box bg-base-200/60 px-4 py-3">
+          <div className={`collapse collapse-arrow bg-base-200/60 ${isRunning ? 'opacity-60' : ''}`}>
+            <input
+              type="checkbox"
+              checked={showAdvanced && !isRunning}
+              onChange={event => setShowAdvanced(event.target.checked)}
+              disabled={isRunning}
+              aria-label="Toggle advanced settings"
+              style={noDragRegionStyle}
+            />
+            <div className="collapse-title min-h-0 py-3 text-sm font-bold text-base-content">
+              Advanced
+            </div>
+            <div className="collapse-content">
+              <div className="grid gap-3 pt-1">
+                <Field label="Scan step">
+                  <input
+                    className="input input-sm w-full"
+                    type="number"
+                    min="1"
+                    value={settings.step}
+                    onChange={event => setNumericSetting('step', event.target.value)}
+                  />
+                </Field>
+                <Field label="Segment length">
+                  <input
+                    className="input input-sm w-full"
+                    type="number"
+                    min="1"
+                    value={settings.segment}
+                    onChange={event => setNumericSetting('segment', event.target.value)}
+                  />
+                </Field>
+                <Field label="Start time">
+                  <input
+                    className="input input-sm w-full"
+                    type="number"
+                    min="0"
+                    value={settings.start}
+                    onChange={event => setNumericSetting('start', event.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+
+          <div className={`grid gap-2 rounded-box px-4 py-3 ${statusToneClasses.panel}`}>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-xs font-bold uppercase text-base-content/60">Status</span>
-              <strong className="truncate text-sm font-bold text-base-content">{statusTitle}</strong>
+              <span className={`text-xs font-bold uppercase ${statusToneClasses.label}`}>Status</span>
+              <strong className="truncate text-sm font-bold">{statusTitle}</strong>
             </div>
             {statusDetail && (
-              <p className="truncate text-sm leading-relaxed text-base-content/70">{statusDetail}</p>
+              <p className={`truncate text-sm leading-relaxed ${statusToneClasses.detail}`}>{statusDetail}</p>
             )}
             {showMeter && (
-              <progress className="progress progress-primary h-2" value={progressValue} max="100" aria-label={`Analysis progress ${progressValue}%`} />
+              <progress className={`progress h-2 ${statusToneClasses.progress}`} value={progressValue} max="100" aria-label={`Analysis progress ${progressValue}%`} />
             )}
           </div>
-
-          {showAdvanced && !isRunning && (
-            <div className="grid gap-3 border-t border-base-300 pt-4">
-              <Field label="Scan step">
-                <input
-                  className="input input-sm w-full"
-                  type="number"
-                  min="1"
-                  value={settings.step}
-                  onChange={event => setNumericSetting('step', event.target.value)}
-                />
-              </Field>
-              <Field label="Segment length">
-                <input
-                  className="input input-sm w-full"
-                  type="number"
-                  min="1"
-                  value={settings.segment}
-                  onChange={event => setNumericSetting('segment', event.target.value)}
-                />
-              </Field>
-              <Field label="Start time">
-                <input
-                  className="input input-sm w-full"
-                  type="number"
-                  min="0"
-                  value={settings.start}
-                  onChange={event => setNumericSetting('start', event.target.value)}
-                />
-              </Field>
-            </div>
-          )}
 
           {notice && (
             <p className={`alert alert-soft ${NOTICE_ALERT_CLASSES[notice.tone] ?? 'alert-info'}`} aria-live="polite">
@@ -466,7 +524,7 @@ export default function App() {
         </aside>
 
         <section className="flex min-h-0 flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/95 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-base-300 p-4">
             <div className="min-w-56 flex-1">
               <h2 className="m-0 text-lg font-bold leading-tight text-base-content">Tracklist</h2>
               <p className="mt-1 text-sm text-base-content/60">
@@ -475,22 +533,25 @@ export default function App() {
                   : 'Results will appear here as Cuezy recognizes songs.'}
               </p>
             </div>
-            {rows.length > 0 && (
-              <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-4">
-                <button type="button" className="btn btn-sm" onClick={copyMarkdown}>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {rows.length > 0 && (
+                <>
+                <button type="button" className="btn btn-sm" onClick={copyMarkdown} disabled={isRunning}>
                   Copy Markdown
                 </button>
-                <button type="button" className="btn btn-sm" onClick={() => save('markdown')}>
+                <button type="button" className="btn btn-sm" onClick={() => save('markdown')} disabled={isRunning}>
                   Save Markdown
                 </button>
-                <button type="button" className="btn btn-sm" onClick={() => save('json')}>
+                <button type="button" className="btn btn-sm" onClick={() => save('json')} disabled={isRunning}>
                   JSON
                 </button>
-                <button type="button" className="btn btn-sm" onClick={() => save('txt')}>
+                <button type="button" className="btn btn-sm" onClick={() => save('txt')} disabled={isRunning}>
                   TXT
                 </button>
-              </div>
-            )}
+                </>
+              )}
+              <ThemePicker theme={theme} onThemeChange={setTheme} />
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto">
@@ -509,7 +570,7 @@ export default function App() {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="h-64 text-center text-base-content/60">
-                      {status.startsWith('Done') ? 'No tracks were found in this pass.' : 'Start analysis to build an editable tracklist.'}
+                      {emptyTracklistMessage}
                     </td>
                   </tr>
                 ) : rows.map(row => (
