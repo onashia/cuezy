@@ -229,7 +229,7 @@ export default function App() {
       window.cuezy.onAnalysisError(({ error }) => {
         setIsRunning(false);
         setJobId(null);
-        const cancelled = error.name === 'AbortError' || /cancel/i.test(error.message || '');
+        const cancelled = error.name === 'AbortError';
         setScanProgress(current => ({
           ...current,
           detail: cancelled ? 'Analysis cancelled' : error.message,

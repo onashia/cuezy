@@ -50,3 +50,11 @@ test('missing numeric flag values parse as invalid numbers', () => {
   assert.equal(Number.isNaN(parsed.options.step), true);
   assert.equal(parsed.options.segment, 18);
 });
+
+test('empty equals-style numeric options parse as invalid numbers', () => {
+  const parsed = parseCliArgs(['mix.mp3', '--step=', '--segment=', '--start=']);
+
+  assert.equal(Number.isNaN(parsed.options.step), true);
+  assert.equal(Number.isNaN(parsed.options.segment), true);
+  assert.equal(Number.isNaN(parsed.options.start), true);
+});
