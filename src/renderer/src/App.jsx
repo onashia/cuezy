@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import cuezyMarkMask from './assets/cuezy-mark-mask.png';
 
 const emptySettings = {
   step: 60,
@@ -12,6 +13,7 @@ const THEME_OPTIONS = [
   { value: 'garden', label: 'Garden' },
   { value: 'lemonade', label: 'Lemonade' },
   { value: 'winter', label: 'Winter' },
+  { value: 'halloween', label: 'Halloween' },
   { value: 'caramellatte', label: 'Caramellatte' },
   { value: 'coffee', label: 'Coffee' },
 ];
@@ -131,9 +133,15 @@ function ThemePicker({ className = '', theme, onThemeChange }) {
 }
 
 function WindowDragStrip() {
+  const markMaskStyle = {
+    WebkitMask: `url(${cuezyMarkMask}) center / contain no-repeat`,
+    mask: `url(${cuezyMarkMask}) center / contain no-repeat`,
+  };
+
   return (
     <div className="window-drag fixed inset-x-0 top-0 z-20 h-12" style={dragRegionStyle}>
-      <div className="pointer-events-none flex h-full items-center justify-center">
+      <div className="pointer-events-none flex h-full items-center justify-center gap-2">
+        <span className="size-5 select-none bg-primary" style={markMaskStyle} aria-hidden="true" />
         <span className="select-none text-sm font-semibold text-base-content/70">Cuezy</span>
       </div>
     </div>
@@ -425,7 +433,7 @@ export default function App() {
           <div {...dropHandlers}>
             <button
               type="button"
-              className={`grid min-h-24 w-full grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-box border border-dashed border-primary/30 bg-base-100 p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isRunning ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-primary/60 hover:bg-primary/5'} ${dragActive ? 'border-primary bg-primary/10' : ''}`}
+              className={`grid min-h-24 w-full grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-box border border-dashed border-primary/30 bg-base-100 p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isRunning ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-primary/60 hover:bg-primary/5'} ${dragActive ? 'border-primary bg-primary/10' : ''}`}
               onClick={pickFile}
               disabled={isRunning}
             >

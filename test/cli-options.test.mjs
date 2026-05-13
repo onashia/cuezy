@@ -28,6 +28,22 @@ test('keeps URL input intact', () => {
   assert.equal(parsed.options.step, 30);
 });
 
+test('parses equals-style numeric options', () => {
+  const parsed = parseCliArgs([
+    'mix.mp3',
+    '--step=600',
+    '--segment=20',
+    '--start=120',
+  ]);
+
+  assert.equal(parsed.input, 'mix.mp3');
+  assert.deepEqual(parsed.options, {
+    step: 600,
+    segment: 20,
+    start: 120,
+  });
+});
+
 test('missing numeric flag values parse as invalid numbers', () => {
   const parsed = parseCliArgs(['mix.mp3', '--step', '--segment', '18']);
 

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: cupcake --default, pastel, garden, lemonade, winter, caramellatte, coffee;
+  themes: cupcake --default, pastel, garden, lemonade, winter, halloween, caramellatte, coffee;
 }
 
 .window-drag {

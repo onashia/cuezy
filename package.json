@@ -59,6 +59,7 @@
       "**/node_modules/shazam-api/**"
     ],
     "mac": {
+      "icon": "build/icon.png",
       "target": [
         "dmg",
         "zip"
