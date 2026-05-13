@@ -487,6 +487,7 @@ export default function App() {
                     min="1"
                     value={settings.step}
                     onChange={event => setNumericSetting('step', event.target.value)}
+                    disabled={isRunning}
                   />
                 </Field>
                 <Field label="Segment length">
@@ -496,6 +497,7 @@ export default function App() {
                     min="1"
                     value={settings.segment}
                     onChange={event => setNumericSetting('segment', event.target.value)}
+                    disabled={isRunning}
                   />
                 </Field>
                 <Field label="Start time">
@@ -505,6 +507,7 @@ export default function App() {
                     min="0"
                     value={settings.start}
                     onChange={event => setNumericSetting('start', event.target.value)}
+                    disabled={isRunning}
                   />
                 </Field>
               </div>
