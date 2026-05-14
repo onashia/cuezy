@@ -1,8 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
-import { existsSync, statSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { analyzeAudio, normalizeAnalysisOptions } from '../../lib/analyze-audio.mjs';
+import { analyzeAudio, normalizeAnalysisRequest } from '../../lib/analyze-audio.mjs';
 import { hasCommand } from '../../lib/audio.mjs';
 import { buildExport, markdownTracklist } from '../shared/tracklist-export.js';
 import { bundledAudioTools } from './tool-paths.js';
@@ -96,40 +95,26 @@ function send(channel, payload) {
   mainWindow.webContents.send(channel, payload);
 }
 
-function validateLocalAudioPath(filePath) {
-  if (typeof filePath !== 'string' || filePath.trim() === '') {
-    throw new TypeError('Select an audio file first.');
-  }
-
-  if (/^https?:\/\//i.test(filePath)) {
-    throw new TypeError('The desktop MVP supports local files only.');
-  }
-
-  if (!existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
-  }
-
-  const stat = statSync(filePath);
-  if (!stat.isFile()) {
-    throw new TypeError('Selected path is not a file.');
-  }
-
-  return filePath;
-}
-
 function validateAnalysisInput(input) {
   if (!input || typeof input !== 'object') {
     throw new TypeError('Analysis options are required.');
   }
 
-  const filePath = validateLocalAudioPath(input.filePath);
-  const options = normalizeAnalysisOptions({
+  if (typeof input.filePath !== 'string' || input.filePath.trim() === '') {
+    throw new TypeError('Select an audio file first.');
+  }
+
+  const request = normalizeAnalysisRequest(input.filePath, {
     step: input.step === null || input.step === undefined ? null : Number(input.step),
     segment: input.segment === undefined ? 18 : Number(input.segment),
     start: input.start === undefined ? 0 : Number(input.start),
+  }, {
+    allowUrls: false,
+    requireLocalFile: true,
+    localOnlyMessage: 'The desktop MVP supports local files only.',
   });
 
-  return { filePath, options };
+  return { filePath: request.input, options: request.options };
 }
 
 function defaultExportName(format) {
