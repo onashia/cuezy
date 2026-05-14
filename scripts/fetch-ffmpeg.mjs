@@ -86,21 +86,23 @@ async function readManifest(path) {
 }
 
 function validateEntry(target, entry) {
-  const missing = ['url', 'sha256', 'archiveType', 'ffmpegPath', 'ffprobePath']
-    .filter(key => !entry?.[key]);
-
   if (entry?.status !== 'active') {
     throw new Error(`${target} is not active in the FFmpeg manifest yet.`);
   }
 
-  if (missing.length > 0) {
-    throw new Error(`${target} is missing required manifest fields: ${missing.join(', ')}`);
+  for (const tool of ['ffmpeg', 'ffprobe']) {
+    const missing = ['url', 'sha256', 'archiveType', 'path']
+      .filter(key => !entry?.artifacts?.[tool]?.[key]);
+
+    if (missing.length > 0) {
+      throw new Error(`${target} ${tool} is missing required manifest fields: ${missing.join(', ')}`);
+    }
   }
 }
 
-function archiveName(target, entry) {
-  const urlName = basename(new URL(entry.url).pathname);
-  return `${target}-${entry.sha256.slice(0, 12)}-${urlName || 'ffmpeg-archive'}`;
+function archiveName(target, tool, artifact) {
+  const urlName = basename(new URL(artifact.url).pathname);
+  return `${target}-${tool}-${artifact.sha256.slice(0, 12)}-${urlName || 'ffmpeg-archive'}`;
 }
 
 function download(url, outputPath) {
@@ -183,19 +185,19 @@ async function extractArchive(archivePath, outputDir, archiveType) {
   throw new Error(`Unsupported archiveType: ${archiveType}`);
 }
 
-async function ensureArchive(target, entry, cacheDir, force) {
+async function ensureArchive(target, tool, artifact, cacheDir, force) {
   await mkdir(cacheDir, { recursive: true });
-  const archivePath = join(cacheDir, archiveName(target, entry));
+  const archivePath = join(cacheDir, archiveName(target, tool, artifact));
 
   if (force || !await exists(archivePath)) {
-    console.log(`Downloading ${target} FFmpeg archive...`);
-    await download(entry.url, archivePath);
+    console.log(`Downloading ${target} ${tool} archive...`);
+    await download(artifact.url, archivePath);
   }
 
   const actual = await sha256(archivePath);
-  if (actual.toLowerCase() !== entry.sha256.toLowerCase()) {
+  if (actual.toLowerCase() !== artifact.sha256.toLowerCase()) {
     await rm(archivePath, { force: true });
-    throw new Error(`Checksum mismatch for ${target}. Expected ${entry.sha256}, got ${actual}.`);
+    throw new Error(`Checksum mismatch for ${target} ${tool}. Expected ${artifact.sha256}, got ${actual}.`);
   }
 
   return archivePath;
@@ -212,26 +214,29 @@ async function copyTool(source, destination) {
 async function installTarget(target, entry, args) {
   validateEntry(target, entry);
 
-  const archivePath = await ensureArchive(target, entry, args.cacheDir, args.force);
-  const extractDir = await mkdtemp(join(tmpdir(), `cuezy-ffmpeg-${target}-`));
   const targetDir = join(args.outputDir, target);
-  const ffmpegName = target.startsWith('win32') ? 'ffmpeg.exe' : 'ffmpeg';
-  const ffprobeName = target.startsWith('win32') ? 'ffprobe.exe' : 'ffprobe';
+  const toolNames = target.startsWith('win32')
+    ? { ffmpeg: 'ffmpeg.exe', ffprobe: 'ffprobe.exe' }
+    : { ffmpeg: 'ffmpeg', ffprobe: 'ffprobe' };
 
-  try {
-    await extractArchive(archivePath, extractDir, entry.archiveType);
-    const ffmpegSource = join(extractDir, entry.ffmpegPath);
-    const ffprobeSource = join(extractDir, entry.ffprobePath);
+  await rm(targetDir, { recursive: true, force: true });
 
-    await stat(ffmpegSource);
-    await stat(ffprobeSource);
-    await rm(targetDir, { recursive: true, force: true });
-    await copyTool(ffmpegSource, join(targetDir, ffmpegName));
-    await copyTool(ffprobeSource, join(targetDir, ffprobeName));
-    console.log(`Installed ${target} FFmpeg tools to ${targetDir}`);
-  } finally {
-    await rm(extractDir, { recursive: true, force: true });
+  for (const tool of ['ffmpeg', 'ffprobe']) {
+    const artifact = entry.artifacts[tool];
+    const archivePath = await ensureArchive(target, tool, artifact, args.cacheDir, args.force);
+    const extractDir = await mkdtemp(join(tmpdir(), `cuezy-${tool}-${target}-`));
+
+    try {
+      await extractArchive(archivePath, extractDir, artifact.archiveType);
+      const source = join(extractDir, artifact.path);
+      await stat(source);
+      await copyTool(source, join(targetDir, toolNames[tool]));
+    } finally {
+      await rm(extractDir, { recursive: true, force: true });
+    }
   }
+
+  console.log(`Installed ${target} FFmpeg tools to ${targetDir}`);
 }
 
 async function main() {

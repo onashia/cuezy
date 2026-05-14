@@ -15,10 +15,9 @@ resources/bin/linux-x64/ffmpeg
 resources/bin/linux-x64/ffprobe
 ```
 
-Do not commit downloaded binaries here until their source, version, checksum,
-license, and build configuration are documented in NOTICE or a dedicated
-third-party notice file.
+Do not commit downloaded binaries here. Their source, version, checksum,
+license, and build script are documented in `resources/ffmpeg-manifest.json`
+and `THIRD_PARTY_NOTICES.md`.
 
-Use `npm run fetch:ffmpeg -- --list` to inspect configured targets. Once
-`resources/ffmpeg-manifest.json` has active pinned entries, use
+Use `npm run fetch:ffmpeg -- --list` to inspect configured targets. Use
 `npm run fetch:ffmpeg -- --target <platform-arch>` before packaging that target.

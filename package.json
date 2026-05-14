@@ -13,14 +13,15 @@
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "verify:ffmpeg": "node scripts/verify-ffmpeg-binaries.mjs",
     "preview": "electron-vite preview",
-    "dist": "npm run verify:ffmpeg && electron-vite build && electron-builder",
-    "dist:mac": "npm run verify:ffmpeg && electron-vite build && electron-builder --mac",
+    "dist": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder",
+    "dist:mac": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder --mac",
     "test": "node --test"
   },
   "files": [
     "cli.mjs",
     "lib/",
-    "NOTICE"
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "keywords": [
     "dj",
@@ -56,18 +57,9 @@
       "lib/**",
       "package.json",
       "NOTICE",
+      "THIRD_PARTY_NOTICES.md",
       "node_modules/**",
       "LICENSE"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/bin",
-        "to": "bin",
-        "filter": [
-          "**/*",
-          "!README.md"
-        ]
-      }
     ],
     "asarUnpack": [
       "**/node_modules/shazam-api/**"
@@ -79,7 +71,16 @@
         "zip"
       ],
       "identity": null,
-      "category": "public.app-category.music"
+      "category": "public.app-category.music",
+      "extraResources": [
+        {
+          "from": "resources/bin/darwin-${arch}",
+          "to": "bin/darwin-${arch}",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
     }
   },
   "dependencies": {
