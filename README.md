@@ -114,4 +114,8 @@ Cancellation is best-effort: Cuezy checks `AbortSignal` before and after audio t
 
 ## License
 
-MIT
+Cuezy is licensed under the GNU General Public License v3.0 or later. See
+`LICENSE` for the full license text.
+
+Portions of Cuezy are derived from the original MIT-licensed `mix-id` project.
+The original copyright and MIT license notice are preserved in `NOTICE`.

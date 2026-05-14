@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { analyzeAudio, normalizeAnalysisOptions } from '../../lib/analyze-audio.mjs';
 import { hasCommand } from '../../lib/audio.mjs';
 import { buildExport, markdownTracklist } from '../shared/tracklist-export.js';
+import { bundledAudioTools } from './tool-paths.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
@@ -143,13 +144,40 @@ function fileFilters(format) {
   return [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 }
 
+function audioTools() {
+  const bundled = bundledAudioTools();
+  if (bundled.available) return bundled;
+
+  if (app.isPackaged) {
+    return {
+      available: false,
+      ffmpegCommand: null,
+      ffprobeCommand: null,
+      source: 'missing',
+      binDir: bundled.binDir,
+    };
+  }
+
+  const ffmpegAvailable = hasCommand('ffmpeg');
+  const ffprobeAvailable = hasCommand('ffprobe');
+  return {
+    available: ffmpegAvailable && ffprobeAvailable,
+    ffmpegCommand: 'ffmpeg',
+    ffprobeCommand: 'ffprobe',
+    source: 'system',
+    binDir: bundled.binDir,
+  };
+}
+
 ipcMain.handle('app:get-info', event => {
   ensureTrustedSender(event);
+  const tools = audioTools();
   return {
     name: app.getName(),
     version: app.getVersion(),
     isPackaged: app.isPackaged,
-    ffmpegAvailable: hasCommand('ffmpeg') && hasCommand('ffprobe'),
+    ffmpegAvailable: tools.available,
+    audioToolsSource: tools.available ? tools.source : 'missing',
   };
 });
 
@@ -177,8 +205,11 @@ ipcMain.handle('analysis:start', async (event, input) => {
     throw new Error('An analysis job is already running.');
   }
 
-  if (!hasCommand('ffmpeg') || !hasCommand('ffprobe')) {
-    throw new Error('ffmpeg and ffprobe are required. Install ffmpeg and try again.');
+  const tools = audioTools();
+  if (!tools.available) {
+    throw new Error(app.isPackaged
+      ? 'Cuezy could not find its bundled audio tools. Reinstall Cuezy and try again.'
+      : 'ffmpeg and ffprobe are required. Install ffmpeg or add bundled tools under resources/bin and try again.');
   }
 
   const { filePath, options } = validateAnalysisInput(input);
@@ -191,6 +222,8 @@ ipcMain.handle('analysis:start', async (event, input) => {
       const result = await analyzeAudio(filePath, {
         ...options,
         signal: controller.signal,
+        ffmpegCommand: tools.ffmpegCommand,
+        ffprobeCommand: tools.ffprobeCommand,
       }, {
         onProgress(progress) {
           send('analysis:progress', { jobId, progress });

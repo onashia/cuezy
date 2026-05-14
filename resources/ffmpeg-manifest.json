@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "description": "Pinned FFmpeg/ffprobe binary downloads for Cuezy packaging. Fill in active entries only after verifying source, license, build configuration, and sha256.",
+  "targets": {
+    "darwin-arm64": {
+      "status": "placeholder",
+      "version": "",
+      "url": "",
+      "sha256": "",
+      "archiveType": "zip",
+      "ffmpegPath": "",
+      "ffprobePath": "",
+      "license": "",
+      "source": ""
+    },
+    "darwin-x64": {
+      "status": "placeholder",
+      "version": "",
+      "url": "",
+      "sha256": "",
+      "archiveType": "zip",
+      "ffmpegPath": "",
+      "ffprobePath": "",
+      "license": "",
+      "source": ""
+    }
+  }
+}
