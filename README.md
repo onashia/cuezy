@@ -15,6 +15,7 @@ npm run dist:mac  # unsigned local dmg + zip build
 
 Release packaging fetches pinned FFmpeg and FFprobe binaries into
 `resources/bin/` before building. The generated binaries are ignored by git.
+For packaging and release validation, see `docs/release.md`.
 
 The desktop app currently supports local audio and video files only. URL downloads and `yt-dlp` support remain available through the inherited CLI for now.
 
