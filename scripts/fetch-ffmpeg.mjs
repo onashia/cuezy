@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'crypto';
-import { createWriteStream } from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
 import {
   access,
   chmod,
@@ -133,8 +133,10 @@ function download(url, outputPath) {
 
 async function sha256(path) {
   const hash = createHash('sha256');
-  const file = await readFile(path);
-  hash.update(file);
+  const stream = createReadStream(path);
+  for await (const chunk of stream) {
+    hash.update(chunk);
+  }
   return hash.digest('hex');
 }
 
