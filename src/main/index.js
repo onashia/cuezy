@@ -95,7 +95,7 @@ function send(channel, payload) {
   mainWindow.webContents.send(channel, payload);
 }
 
-function validateAnalysisInput(input) {
+async function validateAnalysisInput(input) {
   if (!input || typeof input !== 'object') {
     throw new TypeError('Analysis options are required.');
   }
@@ -104,7 +104,7 @@ function validateAnalysisInput(input) {
     throw new TypeError('Select an audio file first.');
   }
 
-  const request = normalizeAnalysisRequest(input.filePath, {
+  const request = await normalizeAnalysisRequest(input.filePath, {
     step: input.step === null || input.step === undefined ? null : Number(input.step),
     segment: input.segment === undefined ? 18 : Number(input.segment),
     start: input.start === undefined ? 0 : Number(input.start),
@@ -197,7 +197,7 @@ ipcMain.handle('analysis:start', async (event, input) => {
       : 'ffmpeg and ffprobe are required. Install ffmpeg or add bundled tools under resources/bin and try again.');
   }
 
-  const { filePath, options } = validateAnalysisInput(input);
+  const { filePath, options } = await validateAnalysisInput(input);
   const jobId = `job-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const controller = new AbortController();
   activeJob = { id: jobId, controller };

@@ -28,8 +28,8 @@ test('validates numeric analysis options', () => {
   assert.throws(() => normalizeAnalysisOptions({ start: -1 }), /start must be non-negative/);
 });
 
-test('normalizes analysis requests before work starts', () => {
-  assert.deepEqual(normalizeAnalysisRequest('/tmp/local mix.mp3', { step: 600 }), {
+test('normalizes analysis requests before work starts', async () => {
+  assert.deepEqual(await normalizeAnalysisRequest('/tmp/local mix.mp3', { step: 600 }), {
     input: '/tmp/local mix.mp3',
     isURL: false,
     isLocalFile: true,
@@ -42,12 +42,12 @@ test('normalizes analysis requests before work starts', () => {
   });
 
   assert.equal(
-    normalizeAnalysisRequest('https://example.com/mix').isURL,
+    (await normalizeAnalysisRequest('https://example.com/mix')).isURL,
     true
   );
 });
 
-test('can require local file requests', () => {
+test('can require local file requests', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'mix-id-request-'));
 
   try {
@@ -55,15 +55,15 @@ test('can require local file requests', () => {
     writeFileSync(file, '');
 
     assert.equal(
-      normalizeAnalysisRequest(file, {}, { requireLocalFile: true }).input,
+      (await normalizeAnalysisRequest(file, {}, { requireLocalFile: true })).input,
       file
     );
-    assert.throws(
-      () => normalizeAnalysisRequest(dir, {}, { requireLocalFile: true }),
+    await assert.rejects(
+      normalizeAnalysisRequest(dir, {}, { requireLocalFile: true }),
       /Selected path is not a file/
     );
-    assert.throws(
-      () => normalizeAnalysisRequest('https://example.com/mix', {}, {
+    await assert.rejects(
+      normalizeAnalysisRequest('https://example.com/mix', {}, {
         allowUrls: false,
         localOnlyMessage: 'local files only',
       }),

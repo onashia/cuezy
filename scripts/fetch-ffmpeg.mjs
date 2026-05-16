@@ -105,12 +105,22 @@ function archiveName(target, tool, artifact) {
   return `${target}-${tool}-${artifact.sha256.slice(0, 12)}-${urlName || 'ffmpeg-archive'}`;
 }
 
-function download(url, outputPath) {
+function download(url, outputPath, redirects = 0) {
+  if (redirects > 5) {
+    return Promise.reject(new Error(`Too many redirects: ${url}`));
+  }
+
   return new Promise((resolveDownload, rejectDownload) => {
     const request = get(url, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+        const location = response.headers.location;
         response.resume();
-        download(new URL(response.headers.location, url).toString(), outputPath)
+        if (!location) {
+          rejectDownload(new Error(`Redirect status ${response.statusCode} without location header: ${url}`));
+          return;
+        }
+
+        download(new URL(location, url).toString(), outputPath, redirects + 1)
           .then(resolveDownload, rejectDownload);
         return;
       }
@@ -123,7 +133,15 @@ function download(url, outputPath) {
 
       const file = createWriteStream(outputPath);
       response.pipe(file);
-      file.on('finish', () => file.close(resolveDownload));
+      file.on('finish', () => {
+        file.close(error => {
+          if (error) {
+            rejectDownload(error);
+            return;
+          }
+          resolveDownload();
+        });
+      });
       file.on('error', rejectDownload);
     });
 

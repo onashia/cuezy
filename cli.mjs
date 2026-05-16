@@ -51,7 +51,7 @@ if (!input || flags.help) {
 
 let analysisRequest;
 try {
-  analysisRequest = normalizeAnalysisRequest(input, options);
+  analysisRequest = await normalizeAnalysisRequest(input, options);
 } catch (err) {
   console.error(`❌ ${err.message}`);
   process.exit(1);
