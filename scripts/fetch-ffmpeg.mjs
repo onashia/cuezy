@@ -211,7 +211,12 @@ async function ensureArchive(target, tool, artifact, cacheDir, force) {
 
   if (force || !await exists(archivePath)) {
     console.log(`Downloading ${target} ${tool} archive...`);
-    await download(artifact.url, archivePath);
+    try {
+      await download(artifact.url, archivePath);
+    } catch (error) {
+      await rm(archivePath, { force: true });
+      throw error;
+    }
   }
 
   const actual = await sha256(archivePath);
