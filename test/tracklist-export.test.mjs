@@ -84,6 +84,15 @@ test('accepts raw second timestamps for cue indexes', () => {
   );
 });
 
+test('preserves numeric zero timestamps for cue indexes', () => {
+  assert.match(
+    buildCueExport([
+      { timestamp: 0, artist: 'Artist', title: 'Intro' },
+    ]),
+    /TRACK 01 AUDIO\n    TITLE "Intro"\n    PERFORMER "Artist"\n    INDEX 01 00:00:00/
+  );
+});
+
 test('skips cue tracks without valid timing information', () => {
   const cue = buildCueExport([
     { timestamp: '', artist: 'Artist A', title: 'Untimed' },
