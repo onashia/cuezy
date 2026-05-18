@@ -141,3 +141,77 @@ test('public analysis API forwards explicit audio tool paths', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('public analysis API reports cancellation through onError', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mix-id-api-cancel-'));
+
+  try {
+    const input = join(dir, 'mix.mp3');
+    const ffprobe = join(dir, 'custom-ffprobe');
+    const ffmpeg = join(dir, 'custom-ffmpeg');
+    writeFileSync(input, 'audio');
+    writeFileSync(ffprobe, '#!/bin/sh\nprintf \'{"format":{"duration":"90"}}\'\n');
+    writeFileSync(ffmpeg, '#!/bin/sh\nout=""\nfor arg in "$@"; do\n  out="$arg"\ndone\nprintf ok > "$out"\n');
+    chmodSync(ffprobe, 0o755);
+    chmodSync(ffmpeg, 0o755);
+
+    const controller = new AbortController();
+    const errors = [];
+    const progress = [];
+
+    await assert.rejects(
+      analyzeAudio(input, {
+        step: 45,
+        segment: 1,
+        rateLimitMs: 0,
+        signal: controller.signal,
+        ffmpegCommand: ffmpeg,
+        ffprobeCommand: ffprobe,
+        recognize: async () => null,
+      }, {
+        onProgress(update) {
+          progress.push(update);
+          if (update.phase === 'scan' && update.percent === 0) {
+            controller.abort('Analysis cancelled');
+          }
+        },
+        onError(error) {
+          errors.push(error);
+        },
+      }),
+      error => error.name === 'AbortError' && /Analysis cancelled/.test(error.message)
+    );
+
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].name, 'AbortError');
+    assert.deepEqual(progress.map(update => update.phase), ['prepare', 'probe', 'scan']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('public analysis API does not call onDone after cancellation', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mix-id-api-cancel-'));
+
+  try {
+    const input = join(dir, 'mix.mp3');
+    writeFileSync(input, 'audio');
+
+    const controller = new AbortController();
+    controller.abort('Already cancelled');
+
+    let doneCalled = false;
+    await assert.rejects(
+      analyzeAudio(input, { signal: controller.signal }, {
+        onDone() {
+          doneCalled = true;
+        },
+      }),
+      error => error.name === 'AbortError' && /Already cancelled/.test(error.message)
+    );
+
+    assert.equal(doneCalled, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
