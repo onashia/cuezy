@@ -132,6 +132,15 @@ function fileFilters(format) {
   return [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
 }
 
+function exportMeta(input) {
+  return {
+    audioFilename: typeof input.audioFilename === 'string' ? input.audioFilename : '',
+    source: typeof input.source === 'string' ? input.source : '',
+    title: typeof input.title === 'string' ? input.title : '',
+    maxRows: MAX_EXPORT_ROWS,
+  };
+}
+
 function audioTools() {
   const bundled = bundledAudioTools();
   if (bundled.available) return bundled;
@@ -266,7 +275,7 @@ ipcMain.handle('export:save', async (event, input) => {
   }
 
   const format = String(input.format || 'markdown');
-  const text = buildExport(format, input.rows, { maxRows: MAX_EXPORT_ROWS });
+  const text = buildExport(format, input.rows, exportMeta(input));
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save tracklist',
     defaultPath: defaultExportName(format),

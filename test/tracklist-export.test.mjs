@@ -32,6 +32,13 @@ test('builds cue exports from shared rows', () => {
   );
 });
 
+test('passes cue metadata through generic export builder', () => {
+  assert.match(
+    buildExport('cue', rows, { audioFilename: 'source mix.mka', title: 'source mix' }),
+    /TITLE "source mix"\nFILE "source mix\.mka" MP3/
+  );
+});
+
 test('does not limit normalized rows unless requested', () => {
   const manyRows = Array.from({ length: 3 }, (_, index) => ({
     timestamp: `00:0${index}`,
