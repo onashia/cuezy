@@ -63,6 +63,32 @@ test('desktop analysis validation falls back for blank numeric inputs', async ()
   }
 });
 
+test('desktop analysis validation rejects non-string numeric coercions', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cuezy-main-contracts-'));
+
+  try {
+    const file = join(dir, 'local mix.mp3');
+    writeFileSync(file, 'audio');
+
+    assert.deepEqual(await validateAnalysisInput({
+      filePath: file,
+      step: false,
+      segment: ['20'],
+      start: [],
+    }), {
+      filePath: file,
+      options: {
+        step: null,
+        segment: 18,
+        start: 0,
+        outputDir: process.cwd(),
+      },
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('desktop analysis validation rejects URLs before Electron starts work', async () => {
   await assert.rejects(
     validateAnalysisInput({ filePath: 'https://example.com/mix', step: null }),

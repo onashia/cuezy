@@ -25,8 +25,8 @@ test('preload analysis options fall back on missing or invalid values', () => {
   assert.deepEqual(cleanAnalysisOptions({
     filePath: 42,
     step: '   ',
-    segment: Number.NaN,
-    start: 'nope',
+    segment: ['20'],
+    start: false,
   }), {
     filePath: '',
     step: null,
