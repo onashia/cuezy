@@ -1,29 +1,21 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { analyzeAudio, normalizeAnalysisRequest } from '../../lib/analyze-audio.mjs';
+import { analyzeAudio } from '../../lib/analyze-audio.mjs';
 import { hasCommand } from '../../lib/audio.mjs';
 import { buildExport, markdownTracklist } from '../../lib/export.mjs';
 import { bundledAudioTools } from './tool-paths.js';
+import {
+  AUDIO_EXTENSIONS,
+  defaultExportName,
+  exportMeta,
+  fileFilters,
+  resolveAudioTools,
+  validateAnalysisInput,
+} from './contracts.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
-const AUDIO_EXTENSIONS = [
-  'mp3',
-  'wav',
-  'flac',
-  'm4a',
-  'aac',
-  'ogg',
-  'opus',
-  'webm',
-  'mka',
-  'mp4',
-  'mov',
-  'mkv',
-];
-const MAX_EXPORT_ROWS = 2000;
-
 let mainWindow;
 let activeJob = null;
 
@@ -96,74 +88,12 @@ function send(channel, payload) {
   mainWindow.webContents.send(channel, payload);
 }
 
-async function validateAnalysisInput(input) {
-  if (!input || typeof input !== 'object') {
-    throw new TypeError('Analysis options are required.');
-  }
-
-  if (typeof input.filePath !== 'string' || input.filePath.trim() === '') {
-    throw new TypeError('Select an audio file first.');
-  }
-
-  const request = await normalizeAnalysisRequest(input.filePath, {
-    step: input.step === null || input.step === undefined ? null : Number(input.step),
-    segment: input.segment === undefined ? 18 : Number(input.segment),
-    start: input.start === undefined ? 0 : Number(input.start),
-  }, {
-    allowUrls: false,
-    requireLocalFile: true,
-    localOnlyMessage: 'The desktop MVP supports local files only.',
-  });
-
-  return { filePath: request.input, options: request.options };
-}
-
-function defaultExportName(format) {
-  if (format === 'json') return 'cuezy-tracklist.json';
-  if (format === 'txt') return 'cuezy-tracklist.txt';
-  if (format === 'cue') return 'cuezy-tracklist.cue';
-  return 'cuezy-tracklist.md';
-}
-
-function fileFilters(format) {
-  if (format === 'json') return [{ name: 'JSON', extensions: ['json'] }];
-  if (format === 'txt') return [{ name: 'Text', extensions: ['txt'] }];
-  if (format === 'cue') return [{ name: 'CUE', extensions: ['cue'] }];
-  return [{ name: 'Markdown', extensions: ['md', 'markdown'] }];
-}
-
-function exportMeta(input) {
-  return {
-    audioFilename: typeof input.audioFilename === 'string' ? input.audioFilename : '',
-    source: typeof input.source === 'string' ? input.source : '',
-    title: typeof input.title === 'string' ? input.title : '',
-    maxRows: MAX_EXPORT_ROWS,
-  };
-}
-
 function audioTools() {
-  const bundled = bundledAudioTools();
-  if (bundled.available) return bundled;
-
-  if (app.isPackaged) {
-    return {
-      available: false,
-      ffmpegCommand: null,
-      ffprobeCommand: null,
-      source: 'missing',
-      binDir: bundled.binDir,
-    };
-  }
-
-  const ffmpegAvailable = hasCommand('ffmpeg');
-  const ffprobeAvailable = hasCommand('ffprobe');
-  return {
-    available: ffmpegAvailable && ffprobeAvailable,
-    ffmpegCommand: 'ffmpeg',
-    ffprobeCommand: 'ffprobe',
-    source: 'system',
-    binDir: bundled.binDir,
-  };
+  return resolveAudioTools({
+    bundled: bundledAudioTools(),
+    isPackaged: app.isPackaged,
+    hasSystemCommand: hasCommand,
+  });
 }
 
 ipcMain.handle('app:get-info', event => {
