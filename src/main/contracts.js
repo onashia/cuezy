@@ -35,8 +35,8 @@ export async function validateAnalysisInput(input) {
 
   const request = await normalizeAnalysisRequest(input.filePath, {
     step: cleanNumber(input.step, null),
-    segment: cleanNumber(input.segment, 18),
-    start: cleanNumber(input.start, 0),
+    segment: cleanNumber(input.segment, null),
+    start: cleanNumber(input.start, null),
   }, {
     allowUrls: false,
     requireLocalFile: true,

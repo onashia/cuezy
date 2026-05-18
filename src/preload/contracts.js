@@ -9,8 +9,8 @@ export function cleanAnalysisOptions(options = {}) {
   return {
     filePath: typeof options.filePath === 'string' ? options.filePath : '',
     step: cleanNumber(options.step, null),
-    segment: cleanNumber(options.segment, 18),
-    start: cleanNumber(options.start, 0),
+    segment: cleanNumber(options.segment, null),
+    start: cleanNumber(options.start, null),
   };
 }
 

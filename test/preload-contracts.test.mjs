@@ -30,8 +30,8 @@ test('preload analysis options fall back on missing or invalid values', () => {
   }), {
     filePath: '',
     step: null,
-    segment: 18,
-    start: 0,
+    segment: null,
+    start: null,
   });
 });
 
