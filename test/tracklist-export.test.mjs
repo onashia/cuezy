@@ -39,6 +39,24 @@ test('passes cue metadata through generic export builder', () => {
   );
 });
 
+test('falls back to timestamp when cue position is empty', () => {
+  assert.match(
+    buildCueExport([
+      { timestamp: '01:30', position_sec: '', artist: 'Artist', title: 'Song' },
+    ]),
+    /INDEX 01 01:30:00/
+  );
+});
+
+test('accepts raw second timestamps for cue indexes', () => {
+  assert.match(
+    buildCueExport([
+      { timestamp: '120', artist: 'Artist', title: 'Song' },
+    ]),
+    /INDEX 01 02:00:00/
+  );
+});
+
 test('does not limit normalized rows unless requested', () => {
   const manyRows = Array.from({ length: 3 }, (_, index) => ({
     timestamp: `00:0${index}`,
