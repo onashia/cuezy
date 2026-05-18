@@ -1,5 +1,6 @@
 function cleanNumber(value, fallback) {
-  if (value === null || value === undefined || value === '') return fallback;
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string' && value.trim() === '') return fallback;
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
@@ -16,11 +17,11 @@ export function cleanAnalysisOptions(options = {}) {
 export function cleanRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.map(row => ({
-    timestamp: String(row?.timestamp || ''),
-    artist: String(row?.artist || ''),
-    title: String(row?.title || ''),
-    album: String(row?.album || ''),
-    year: String(row?.year || ''),
+    timestamp: String(row?.timestamp ?? ''),
+    artist: String(row?.artist ?? ''),
+    title: String(row?.title ?? ''),
+    album: String(row?.album ?? ''),
+    year: String(row?.year ?? ''),
   }));
 }
 

@@ -24,7 +24,7 @@ test('preload analysis options coerce numeric fields for IPC', () => {
 test('preload analysis options fall back on missing or invalid values', () => {
   assert.deepEqual(cleanAnalysisOptions({
     filePath: 42,
-    step: '',
+    step: '   ',
     segment: Number.NaN,
     start: 'nope',
   }), {
@@ -48,7 +48,7 @@ test('preload rows keep only exportable string fields', () => {
     null,
   ]), [
     {
-      timestamp: '',
+      timestamp: '0',
       artist: 'Artist',
       title: 'Title',
       album: '',

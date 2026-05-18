@@ -17,6 +17,13 @@ export const AUDIO_EXTENSIONS = [
 
 export const MAX_EXPORT_ROWS = 2000;
 
+function cleanNumber(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string' && value.trim() === '') return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 export async function validateAnalysisInput(input) {
   if (!input || typeof input !== 'object') {
     throw new TypeError('Analysis options are required.');
@@ -27,9 +34,9 @@ export async function validateAnalysisInput(input) {
   }
 
   const request = await normalizeAnalysisRequest(input.filePath, {
-    step: input.step === null || input.step === undefined ? null : Number(input.step),
-    segment: input.segment === undefined ? 18 : Number(input.segment),
-    start: input.start === undefined ? 0 : Number(input.start),
+    step: cleanNumber(input.step, null),
+    segment: cleanNumber(input.segment, 18),
+    start: cleanNumber(input.start, 0),
   }, {
     allowUrls: false,
     requireLocalFile: true,
