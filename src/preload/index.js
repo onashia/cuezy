@@ -26,6 +26,14 @@ function cleanRows(rows) {
   }));
 }
 
+function cleanExportMeta(meta = {}) {
+  return {
+    audioFilename: typeof meta.audioFilename === 'string' ? meta.audioFilename : '',
+    source: typeof meta.source === 'string' ? meta.source : '',
+    title: typeof meta.title === 'string' ? meta.title : '',
+  };
+}
+
 function on(channel, callback) {
   if (typeof callback !== 'function') return () => {};
   const listener = (_event, payload) => callback(payload);
@@ -46,9 +54,10 @@ const api = {
   startAnalysis: options => ipcRenderer.invoke('analysis:start', cleanAnalysisOptions(options)),
   cancelAnalysis: jobId => ipcRenderer.invoke('analysis:cancel', String(jobId || '')),
   copyMarkdownTracklist: rows => ipcRenderer.invoke('export:copy-markdown', cleanRows(rows)),
-  saveExport: (format, rows) => ipcRenderer.invoke('export:save', {
+  saveExport: (format, rows, meta) => ipcRenderer.invoke('export:save', {
     format: String(format || 'markdown'),
     rows: cleanRows(rows),
+    ...cleanExportMeta(meta),
   }),
   onAnalysisProgress: callback => on('analysis:progress', callback),
   onSegmentResult: callback => on('analysis:segment-result', callback),

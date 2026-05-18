@@ -75,6 +75,10 @@ function fileName(filePath) {
   return filePath.split(/[\\/]/).pop() || filePath;
 }
 
+function fileTitle(filePath) {
+  return fileName(filePath).replace(/\.[^.]+$/, '') || 'tracklist';
+}
+
 function savedTheme() {
   const fallback = THEME_OPTIONS[0].value;
   try {
@@ -343,7 +347,10 @@ export default function App() {
 
   async function save(format) {
     try {
-      const result = await window.cuezy.saveExport(format, rows);
+      const result = await window.cuezy.saveExport(format, rows, {
+        audioFilename: fileName(filePath),
+        title: fileTitle(filePath),
+      });
       if (!result.canceled) {
         setNotice({ tone: 'success', message: `Saved ${result.filePath}` });
       }
@@ -558,6 +565,9 @@ export default function App() {
                 </button>
                 <button type="button" className="btn btn-sm" onClick={() => save('txt')} disabled={isRunning}>
                   TXT
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => save('cue')} disabled={isRunning}>
+                  CUE
                 </button>
                 </>
               )}

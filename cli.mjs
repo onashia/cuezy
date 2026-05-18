@@ -14,10 +14,12 @@
  */
 
 import { basename } from 'path';
+import { writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { analyzeAudio, normalizeAnalysisRequest } from './lib/analyze-audio.mjs';
-import { formatTime, writeTXT, writeCUE, writeJSON } from './lib/format.mjs';
-import { fileSize, hasCommand } from './lib/audio.mjs';
+import { buildTracklistExport } from './lib/export.mjs';
+import { formatTime } from './lib/format.mjs';
+import { fileSize, hasCommand, resolveCommandPath } from './lib/audio.mjs';
 import { parseCliArgs } from './lib/cli-options.mjs';
 
 // --- Parse args ---
@@ -66,7 +68,7 @@ async function ensureDeps() {
   if (!hasCommand('ffmpeg') || !hasCommand('ffprobe')) missing.push('ffmpeg');
   if (isURL && !hasCommand('yt-dlp')) missing.push('yt-dlp');
 
-  if (missing.length === 0) return;
+  if (missing.length === 0) return resolveCliTools();
 
   // Try auto-install via brew
   if (hasCommand('brew')) {
@@ -74,7 +76,7 @@ async function ensureDeps() {
     const install = spawnSync('brew', ['install', ...missing], { stdio: 'inherit' });
     if (install.status === 0) {
       console.log('');
-      return;
+      return resolveCliTools({ refresh: true });
     }
 
     console.error(`\n❌ Auto-install failed. Please run manually:`);
@@ -89,13 +91,24 @@ async function ensureDeps() {
   process.exit(1);
 }
 
-await ensureDeps();
+function resolveCliTools(options = {}) {
+  return {
+    ffmpegCommand: resolveCommandPath('ffmpeg', options),
+    ffprobeCommand: resolveCommandPath('ffprobe', options),
+    ytDlpCommand: isURL ? resolveCommandPath('yt-dlp', options) : undefined,
+  };
+}
+
+const tools = await ensureDeps();
 
 let result;
 try {
   result = await analyzeAudio(input, {
     ...analysisRequest.options,
     outputDir: process.cwd(),
+    ffmpegCommand: tools.ffmpegCommand,
+    ffprobeCommand: tools.ffprobeCommand,
+    ytDlpCommand: tools.ytDlpCommand,
     inheritDownloadProgress: true,
   }, {
     onProgress(progress) {
@@ -167,13 +180,13 @@ console.log('─'.repeat(50));
 const base = result.file.replace(/\.[^.]+$/, '');
 const audioFilename = basename(result.file);
 
-writeTXT(tracks, base + '_tracklist.txt');
-writeCUE(tracks, base + '.cue', audioFilename);
-writeJSON(tracks, base + '_tracklist.json', {
+writeFileSync(base + '_tracklist.txt', buildTracklistExport('txt', tracks));
+writeFileSync(base + '.cue', buildTracklistExport('cue', tracks, { audioFilename, outPath: base + '.cue' }));
+writeFileSync(base + '_tracklist.json', buildTracklistExport('json', tracks, {
   source: audioFilename,
   duration: result.duration,
   segments_scanned: result.segmentsScanned,
-});
+}));
 
 console.log(`\n💾 Output:`);
 console.log(`   ${base}_tracklist.txt`);
