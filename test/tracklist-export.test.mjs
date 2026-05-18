@@ -45,6 +45,12 @@ test('builds json exports with normalized rows', () => {
   assert.deepEqual(JSON.parse(buildExport('json', rows)), { tracks: rows });
 });
 
+test('builds json exports with a trailing newline', () => {
+  const json = buildExport('json', rows);
+  assert.ok(json.endsWith('\n'));
+  assert.deepEqual(JSON.parse(json), { tracks: rows });
+});
+
 test('builds cue exports from shared rows', () => {
   assert.match(
     buildCueExport(rows, { audioFilename: 'saved mix.mp3', title: 'saved mix' }),
