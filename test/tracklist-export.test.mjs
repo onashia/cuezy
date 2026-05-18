@@ -17,8 +17,28 @@ test('formats markdown tracklists for copy and save', () => {
   assert.equal(markdownTracklist(rows), '# Tracklist\n\n00:00 - Artist A - Song A\n20:00 - Artist B - Song B\n');
 });
 
+test('formats markdown tracklists without empty field separators', () => {
+  assert.equal(
+    markdownTracklist([
+      { timestamp: '00:00', artist: '', title: 'Song A' },
+      { timestamp: '', artist: 'Artist B', title: 'Song B' },
+    ]),
+    '# Tracklist\n\n00:00 - Song A\nArtist B - Song B\n'
+  );
+});
+
 test('formats txt tracklists', () => {
   assert.equal(txtTracklist(rows), 'Artist A - Song A 00:00\nArtist B - Song B 20:00\n');
+});
+
+test('formats txt tracklists without empty field separators', () => {
+  assert.equal(
+    txtTracklist([
+      { timestamp: '00:00', artist: '', title: 'Song A' },
+      { timestamp: '', artist: 'Artist B', title: 'Song B' },
+    ]),
+    'Song A 00:00\nArtist B - Song B\n'
+  );
 });
 
 test('builds json exports with normalized rows', () => {
@@ -39,6 +59,13 @@ test('passes cue metadata through generic export builder', () => {
   );
 });
 
+test('uses wave cue file type for wav sources', () => {
+  assert.match(
+    buildCueExport(rows, { audioFilename: 'source mix.wav' }),
+    /FILE "source mix\.wav" WAVE/
+  );
+});
+
 test('falls back to timestamp when cue position is empty', () => {
   assert.match(
     buildCueExport([
@@ -55,6 +82,17 @@ test('accepts raw second timestamps for cue indexes', () => {
     ]),
     /INDEX 01 02:00:00/
   );
+});
+
+test('skips cue tracks without valid timing information', () => {
+  const cue = buildCueExport([
+    { timestamp: '', artist: 'Artist A', title: 'Untimed' },
+    { timestamp: '60', artist: 'Artist B', title: 'Timed' },
+  ]);
+
+  assert.doesNotMatch(cue, /Untimed/);
+  assert.match(cue, /TRACK 01 AUDIO\n    TITLE "Timed"/);
+  assert.match(cue, /INDEX 01 01:00:00/);
 });
 
 test('does not limit normalized rows unless requested', () => {
