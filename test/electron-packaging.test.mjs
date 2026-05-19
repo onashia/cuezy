@@ -25,3 +25,7 @@ test('externalized shazam dependency is included for packaged runtime', () => {
   assert.ok(packageJson.build?.files?.includes('node_modules/**'));
   assert.ok(packageJson.build?.asarUnpack?.includes('**/node_modules/shazam-api/**'));
 });
+
+test('packaged builds do not grant extra file protocol privileges', () => {
+  assert.equal(packageJson.build?.electronFuses?.grantFileProtocolExtraPrivileges, false);
+});

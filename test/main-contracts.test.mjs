@@ -10,6 +10,10 @@ import {
   resolveAudioTools,
   validateAnalysisInput,
 } from '../src/main/contracts.js';
+import {
+  RENDERER_ENTRY_URL,
+  resolveRendererProtocolPath,
+} from '../src/main/renderer-protocol.js';
 
 test('desktop analysis validation accepts local files and normalized options', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'cuezy-main-contracts-'));
@@ -119,6 +123,33 @@ test('desktop export helpers keep renderer save contracts stable', () => {
     title: 'Saved Mix',
     maxRows: 2000,
   });
+});
+
+test('renderer protocol resolves only app-local files', () => {
+  const rendererRoot = join('/app', 'out', 'renderer');
+
+  assert.equal(RENDERER_ENTRY_URL, 'cuezy://app/index.html');
+  assert.equal(
+    resolveRendererProtocolPath(rendererRoot, 'cuezy://app/index.html'),
+    join(rendererRoot, 'index.html')
+  );
+  assert.equal(
+    resolveRendererProtocolPath(rendererRoot, 'cuezy://app/assets/index.js'),
+    join(rendererRoot, 'assets', 'index.js')
+  );
+  assert.equal(
+    resolveRendererProtocolPath(rendererRoot, 'cuezy://app/'),
+    join(rendererRoot, 'index.html')
+  );
+});
+
+test('renderer protocol rejects unexpected origins and traversal', () => {
+  const rendererRoot = join('/app', 'out', 'renderer');
+
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'file:///app/out/renderer/index.html'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://other/index.html'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%2e%2e/main/index.js'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%E0%A4%A'), null);
 });
 
 test('audio tool resolution prefers bundled tools', () => {

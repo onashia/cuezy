@@ -1,9 +1,14 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, session } from 'electron';
 import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { analyzeAudio } from '../../lib/analyze-audio.mjs';
 import { hasCommand } from '../../lib/audio.mjs';
 import { buildExport, markdownTracklist } from '../../lib/export.mjs';
+import {
+  RENDERER_ENTRY_URL,
+  RENDERER_PROTOCOL,
+  resolveRendererProtocolPath,
+} from './renderer-protocol.js';
 import { bundledAudioTools } from './tool-paths.js';
 import {
   AUDIO_EXTENSIONS,
@@ -21,6 +26,14 @@ let activeJob = null;
 const hardenedContents = new WeakSet();
 
 app.setName('Cuezy');
+protocol.registerSchemesAsPrivileged([{
+  scheme: RENDERER_PROTOCOL,
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+  },
+}]);
 
 function isTrustedNavigation(currentUrl, nextUrl) {
   if (!currentUrl || !nextUrl) return false;
@@ -29,7 +42,7 @@ function isTrustedNavigation(currentUrl, nextUrl) {
     const current = new URL(currentUrl);
     const next = new URL(nextUrl);
 
-    if (current.protocol === 'file:') {
+    if (current.protocol === `${RENDERER_PROTOCOL}:`) {
       return next.href === current.href;
     }
 
@@ -41,6 +54,17 @@ function isTrustedNavigation(currentUrl, nextUrl) {
   }
 
   return false;
+}
+
+function registerRendererProtocol() {
+  protocol.handle(RENDERER_PROTOCOL, request => {
+    const filePath = resolveRendererProtocolPath(join(__dirname, '../renderer'), request.url);
+    if (!filePath) {
+      return new Response('Not found', { status: 404 });
+    }
+
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
 }
 
 function hardenSession() {
@@ -100,7 +124,7 @@ function createWindow() {
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindow.loadURL(RENDERER_ENTRY_URL);
   }
 }
 
@@ -265,6 +289,7 @@ ipcMain.handle('export:save', async (event, input) => {
 
 app.whenReady().then(() => {
   hardenSession();
+  registerRendererProtocol();
   createWindow();
 
   app.on('activate', () => {
@@ -285,4 +310,4 @@ app.on('web-contents-created', (_event, contents) => {
   hardenWebContents(contents);
 });
 
-// TODO: Move packaged renderer loading to a custom app protocol before disabling file:// extra privileges.
+// TODO: Add installer metadata once signing and notarization settings are ready.
