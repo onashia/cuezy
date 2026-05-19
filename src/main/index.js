@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, session } from 'electron';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { analyzeAudio } from '../../lib/analyze-audio.mjs';
@@ -18,8 +18,55 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
 let mainWindow;
 let activeJob = null;
+const hardenedContents = new WeakSet();
 
 app.setName('Cuezy');
+
+function isTrustedNavigation(currentUrl, nextUrl) {
+  if (!currentUrl || !nextUrl) return false;
+
+  try {
+    const current = new URL(currentUrl);
+    const next = new URL(nextUrl);
+
+    if (current.protocol === 'file:') {
+      return next.href === current.href;
+    }
+
+    if (isDev && current.origin === next.origin) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
+function hardenSession() {
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+
+  session.defaultSession.setDevicePermissionHandler?.(() => false);
+}
+
+function hardenWebContents(contents) {
+  if (hardenedContents.has(contents)) return;
+  hardenedContents.add(contents);
+
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  contents.on('will-attach-webview', event => {
+    event.preventDefault();
+  });
+
+  contents.on('will-navigate', (event, url) => {
+    if (!isTrustedNavigation(contents.getURL(), url)) {
+      event.preventDefault();
+    }
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,6 +86,8 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      devTools: isDev,
+      navigateOnDragDrop: false,
     },
   });
 
@@ -46,14 +95,7 @@ function createWindow() {
     mainWindow?.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const currentUrl = mainWindow?.webContents.getURL();
-    if (currentUrl && url !== currentUrl) {
-      event.preventDefault();
-    }
-  });
+  hardenWebContents(mainWindow.webContents);
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -222,6 +264,7 @@ ipcMain.handle('export:save', async (event, input) => {
 });
 
 app.whenReady().then(() => {
+  hardenSession();
   createWindow();
 
   app.on('activate', () => {
@@ -239,7 +282,7 @@ app.on('will-quit', () => {
 });
 
 app.on('web-contents-created', (_event, contents) => {
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  hardenWebContents(contents);
 });
 
-// TODO: Add a later Electron hardening pass with Electron fuses.
+// TODO: Move packaged renderer loading to a custom app protocol before disabling file:// extra privileges.
