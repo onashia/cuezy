@@ -21,11 +21,13 @@ export function resolveRendererProtocolPath(rendererRoot, requestUrl) {
     return null;
   }
 
-  if (pathname.split('/').includes('..')) {
+  const safePathname = pathname.replace(/\\/g, '/');
+
+  if (safePathname.split('/').includes('..')) {
     return null;
   }
 
-  const relativePath = pathname === '/' ? './index.html' : `.${pathname}`;
+  const relativePath = safePathname === '/' ? './index.html' : `.${safePathname}`;
   const filePath = resolve(root, relativePath);
   return filePath === root || filePath.startsWith(`${root}${sep}`) ? filePath : null;
 }

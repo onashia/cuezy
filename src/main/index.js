@@ -58,13 +58,17 @@ function isTrustedNavigation(currentUrl, nextUrl) {
 }
 
 function registerRendererProtocol() {
-  protocol.handle(RENDERER_PROTOCOL, request => {
+  protocol.handle(RENDERER_PROTOCOL, async request => {
     const filePath = resolveRendererProtocolPath(join(__dirname, '../renderer'), request.url);
     if (!filePath) {
       return new Response('Not found', { status: 404 });
     }
 
-    return net.fetch(pathToFileURL(filePath).toString());
+    try {
+      return await net.fetch(pathToFileURL(filePath).toString());
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
   });
 }
 

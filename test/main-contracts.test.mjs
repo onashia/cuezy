@@ -151,6 +151,8 @@ test('renderer protocol rejects unexpected origins and traversal', () => {
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'file:///app/out/renderer/index.html'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://other/index.html'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%2e%2e/main/index.js'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/..\\main\\index.js'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/..%5Cmain%5Cindex.js'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%E0%A4%A'), null);
 });
 
