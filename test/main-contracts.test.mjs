@@ -7,6 +7,7 @@ import {
   defaultExportName,
   exportMeta,
   fileFilters,
+  MAX_EXPORT_ROWS,
   resolveAudioTools,
   validateAnalysisInput,
 } from '../src/main/contracts.js';
@@ -106,6 +107,7 @@ test('desktop analysis validation rejects missing file selection', async () => {
 });
 
 test('desktop export helpers keep renderer save contracts stable', () => {
+  assert.equal(MAX_EXPORT_ROWS, 2000);
   assert.equal(defaultExportName('json'), 'cuezy-tracklist.json');
   assert.equal(defaultExportName('txt'), 'cuezy-tracklist.txt');
   assert.equal(defaultExportName('cue'), 'cuezy-tracklist.cue');

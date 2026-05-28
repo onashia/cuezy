@@ -12,6 +12,7 @@ import {
 import { bundledAudioTools } from './tool-paths.js';
 import {
   AUDIO_EXTENSIONS,
+  MAX_EXPORT_ROWS,
   defaultExportName,
   exportMeta,
   fileFilters,
