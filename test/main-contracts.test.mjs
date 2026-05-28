@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import {
   defaultExportName,
@@ -128,31 +128,32 @@ test('desktop export helpers keep renderer save contracts stable', () => {
 });
 
 test('renderer protocol resolves only app-local files', () => {
-  const rendererRoot = join('/app', 'out', 'renderer');
+  const rendererRoot = resolve('/app', 'out', 'renderer');
 
   assert.equal(RENDERER_ENTRY_URL, 'cuezy://app/index.html');
   assert.equal(
     resolveRendererProtocolPath(rendererRoot, 'cuezy://app/index.html'),
-    join(rendererRoot, 'index.html')
+    resolve(rendererRoot, 'index.html')
   );
   assert.equal(
     resolveRendererProtocolPath(rendererRoot, 'cuezy://app/assets/index.js'),
-    join(rendererRoot, 'assets', 'index.js')
+    resolve(rendererRoot, 'assets', 'index.js')
   );
   assert.equal(
     resolveRendererProtocolPath(rendererRoot, 'cuezy://app/'),
-    join(rendererRoot, 'index.html')
+    resolve(rendererRoot, 'index.html')
   );
 });
 
 test('renderer protocol rejects unexpected origins and traversal', () => {
-  const rendererRoot = join('/app', 'out', 'renderer');
+  const rendererRoot = resolve('/app', 'out', 'renderer');
 
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'file:///app/out/renderer/index.html'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://other/index.html'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%2e%2e/main/index.js'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/..\\main\\index.js'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/..%5Cmain%5Cindex.js'), null);
+  assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%00index.html'), null);
   assert.equal(resolveRendererProtocolPath(rendererRoot, 'cuezy://app/%E0%A4%A'), null);
 });
 
