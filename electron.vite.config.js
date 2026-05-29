@@ -16,6 +16,7 @@ export default defineConfig({
   },
   preload: {
     build: {
+      externalizeDeps: false,
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.js'),

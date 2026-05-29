@@ -53,7 +53,7 @@ Packaging TODOs:
 - Add auto-update and clearer portable/zip distribution strategy.
 - Keep pinned FFmpeg binary source/checksum notices current.
 - Add URL/yt-dlp GUI support after the local-file workflow is solid.
-- Add Electron fuses hardening and better installer metadata.
+- Add better installer metadata.
 
 ## Inherited CLI
 

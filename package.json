@@ -15,7 +15,8 @@
     "preview": "electron-vite preview",
     "dist": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder",
     "dist:mac": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder --mac",
-    "test": "node --test"
+    "test": "node --test",
+    "test:electron-packaging": "npm run build && node scripts/run-node-test.mjs test/electron-packaging.test.mjs"
   },
   "files": [
     "cli.mjs",
@@ -49,6 +50,16 @@
     "appId": "com.cuezy.app",
     "productName": "Cuezy",
     "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "loadBrowserProcessSpecificV8Snapshot": false,
+      "grantFileProtocolExtraPrivileges": false
+    },
     "directories": {
       "output": "release"
     },

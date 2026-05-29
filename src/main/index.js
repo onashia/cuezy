@@ -1,12 +1,18 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, net, protocol, session } from 'electron';
 import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { analyzeAudio } from '../../lib/analyze-audio.mjs';
 import { hasCommand } from '../../lib/audio.mjs';
 import { buildExport, markdownTracklist } from '../../lib/export.mjs';
+import {
+  RENDERER_ENTRY_URL,
+  RENDERER_PROTOCOL,
+  resolveRendererProtocolPath,
+} from './renderer-protocol.js';
 import { bundledAudioTools } from './tool-paths.js';
 import {
   AUDIO_EXTENSIONS,
+  MAX_EXPORT_ROWS,
   defaultExportName,
   exportMeta,
   fileFilters,
@@ -18,8 +24,78 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
 let mainWindow;
 let activeJob = null;
+const hardenedContents = new WeakSet();
 
 app.setName('Cuezy');
+protocol.registerSchemesAsPrivileged([{
+  scheme: RENDERER_PROTOCOL,
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+  },
+}]);
+
+function isTrustedNavigation(currentUrl, nextUrl) {
+  if (!currentUrl || !nextUrl) return false;
+
+  try {
+    const current = new URL(currentUrl);
+    const next = new URL(nextUrl);
+
+    if (current.protocol === `${RENDERER_PROTOCOL}:`) {
+      return next.href === current.href;
+    }
+
+    if (isDev && current.origin === next.origin) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
+function registerRendererProtocol() {
+  protocol.handle(RENDERER_PROTOCOL, async request => {
+    const filePath = resolveRendererProtocolPath(join(__dirname, '../renderer'), request.url);
+    if (!filePath) {
+      return new Response('Not found', { status: 404 });
+    }
+
+    try {
+      return await net.fetch(pathToFileURL(filePath).toString());
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
+  });
+}
+
+function hardenSession() {
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+
+  session.defaultSession.setDevicePermissionHandler?.(() => false);
+}
+
+function hardenWebContents(contents) {
+  if (hardenedContents.has(contents)) return;
+  hardenedContents.add(contents);
+
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  contents.on('will-attach-webview', event => {
+    event.preventDefault();
+  });
+
+  contents.on('will-navigate', (event, url) => {
+    if (!isTrustedNavigation(contents.getURL(), url)) {
+      event.preventDefault();
+    }
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,6 +115,8 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      devTools: isDev,
+      navigateOnDragDrop: false,
     },
   });
 
@@ -46,19 +124,12 @@ function createWindow() {
     mainWindow?.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const currentUrl = mainWindow?.webContents.getURL();
-    if (currentUrl && url !== currentUrl) {
-      event.preventDefault();
-    }
-  });
+  hardenWebContents(mainWindow.webContents);
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindow.loadURL(RENDERER_ENTRY_URL);
   }
 }
 
@@ -222,6 +293,8 @@ ipcMain.handle('export:save', async (event, input) => {
 });
 
 app.whenReady().then(() => {
+  hardenSession();
+  registerRendererProtocol();
   createWindow();
 
   app.on('activate', () => {
@@ -239,7 +312,7 @@ app.on('will-quit', () => {
 });
 
 app.on('web-contents-created', (_event, contents) => {
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  hardenWebContents(contents);
 });
 
-// TODO: Add a later Electron hardening pass with Electron fuses.
+// TODO: Add installer metadata once signing and notarization settings are ready.
