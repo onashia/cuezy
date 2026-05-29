@@ -45,6 +45,28 @@
           "path": "ffprobe"
         }
       }
+    },
+    "win32-x64": {
+      "status": "active",
+      "version": "8.1.1",
+      "provider": "Gyan Doshi CODEX FFMPEG",
+      "license": "GPL-3.0-or-later",
+      "source": "https://www.gyan.dev/ffmpeg/builds/",
+      "buildScript": "https://github.com/GyanD/codexffmpeg",
+      "artifacts": {
+        "ffmpeg": {
+          "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.1-essentials_build.zip",
+          "sha256": "6f58ce889f59c311410f7d2b18895b33c03456463486f3b1ebc93d97a0f54541",
+          "archiveType": "zip",
+          "path": "ffmpeg-8.1.1-essentials_build/bin/ffmpeg.exe"
+        },
+        "ffprobe": {
+          "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.1-essentials_build.zip",
+          "sha256": "6f58ce889f59c311410f7d2b18895b33c03456463486f3b1ebc93d97a0f54541",
+          "archiveType": "zip",
+          "path": "ffmpeg-8.1.1-essentials_build/bin/ffprobe.exe"
+        }
+      }
     }
   }
 }

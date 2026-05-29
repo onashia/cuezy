@@ -15,6 +15,8 @@
     "preview": "electron-vite preview",
     "dist": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder",
     "dist:mac": "npm run fetch:ffmpeg && npm run verify:ffmpeg && electron-vite build && electron-builder --mac",
+    "dist:win": "npm run fetch:ffmpeg -- --target win32-x64 && npm run verify:ffmpeg -- --target win32-x64 && electron-vite build && electron-builder --win nsis zip --x64 -c.win.signAndEditExecutable=true",
+    "dist:win:zip": "npm run fetch:ffmpeg -- --target win32-x64 && npm run verify:ffmpeg -- --target win32-x64 && electron-vite build && electron-builder --win --x64",
     "test": "node --test",
     "test:electron-packaging": "npm run build && node scripts/run-node-test.mjs test/electron-packaging.test.mjs"
   },
@@ -87,6 +89,26 @@
         {
           "from": "resources/bin/darwin-${arch}",
           "to": "bin/darwin-${arch}",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "resources/bin/win32-${arch}",
+          "to": "bin/win32-${arch}",
           "filter": [
             "**/*"
           ]
